@@ -8,11 +8,8 @@ public class Lexer {
     }
 
     static private boolean isWordToken(String item) {
-        return item.startsWith("\"");
-    }
-
-    static private boolean isThingOfWordToken(String item) {
-        return item.startsWith(":");
+        return (item.startsWith("\"") || item.startsWith(":"))
+                || !hasListBeginToken(item) && !hasListEndToken(item);
     }
 
     static private boolean isNumberToken(String item) {
@@ -27,31 +24,26 @@ public class Lexer {
         return item.endsWith("]");
     }
 
-    public ArrayList<Token> lex(String line) throws LexicalErrorException {
-        // TODO: 17-9-27 To be implemented.
+    public Queue<Token> lex(String line) throws LexicalErrorException {
         line = removeComments(line);
 
         String[] items = line.split(" ");
         int nItems = items.length;
-        ArrayList<Token> tokenList = new ArrayList<>();
+        Queue<Token> tokenList = new ArrayDeque<>();
         Stack<Token> tokenStack = new Stack<>();
         for (int i = 0; i < nItems; ++i) {
             String item = items[i];
-            // Process the word literal
-            if (isWordToken(item)) {
-                tokenList.add(new WordToken(item.substring(1)));
-            } else if (isThingOfWordToken(item)) {
-                tokenList.add(new OperatorToken(OperatorToken.OpType.kThing));
-                tokenList.add(new WordToken(item.substring(1)));
-            } else if (isNumberToken(item)) {
+            if (isNumberToken(item)) {
                 tokenList.add(new NumberToken(item));
+            } else if (isWordToken(item)) {
+                tokenList.add(new StringToken(item));
             } else if (hasListBeginToken(item)) {
                 int bracketCount = 0;
                 for (int j = i; j < nItems; ++j) {
                     int startLoc = 0;
                     int endLoc = items[j].length();
                     while (startLoc < endLoc && items[j].charAt(startLoc) == '[') {
-                        tokenStack.push(new OperatorToken(OperatorToken.OpType.kListBegin));
+                        tokenStack.push(new SymbolToken(SymbolToken.SymbolType.kListBegin));
                         ++bracketCount;
                         ++startLoc;
                     }
@@ -63,7 +55,7 @@ public class Lexer {
                     if (isNumberToken(subStr)) {
                         tokenStack.push(new NumberToken(subStr));
                     } else if (!subStr.isEmpty()) {
-                        tokenStack.push(new WordToken(subStr));
+                        tokenStack.push(new StringToken(subStr));
                     }
                     while (endLoc < items[j].length()) {
                         if (tokenStack.empty())
@@ -71,8 +63,8 @@ public class Lexer {
                         ArrayDeque<Token> subList = new ArrayDeque<>();
                         while (!tokenStack.empty()) {
                             Token token = tokenStack.pop();
-                            if (token.isOperator()
-                                    && ((OperatorToken) token).getOpType() == OperatorToken.OpType.kListBegin) {
+                            if (token.isSymbol()
+                                    && ((SymbolToken) token).getSymbolType() == SymbolToken.SymbolType.kListBegin) {
                                 tokenStack.add(new ListToken(new ArrayList<>(subList)));
                                 break;
                             } else {

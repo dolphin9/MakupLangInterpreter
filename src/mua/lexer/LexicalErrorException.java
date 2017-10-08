@@ -7,3 +7,4 @@ public class LexicalErrorException extends Exception {
 class BracketNotPairedException extends LexicalErrorException {
     // TODO: 17-9-28 To be implemented.
 }
+

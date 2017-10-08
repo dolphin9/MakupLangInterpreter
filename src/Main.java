@@ -1,21 +1,24 @@
 import mua.Interpreter;
 import mua.lexer.LexicalErrorException;
+import mua.parser.SyntaxErrorException;
 
 import java.util.Scanner;
 
 public class Main {
     public static void main(String[] argv) {
-        Interpreter interpreter = new Interpreter();
         Scanner scanner = new Scanner(System.in);
-        System.out.print(interpreter.getPrompt());
+        Interpreter interpreter = new Interpreter(scanner, System.out);
+        interpreter.printPrompt();
         while (scanner.hasNext()) {
             String line = scanner.nextLine();
             try {
                 interpreter.execute(line);
             } catch (LexicalErrorException e) {
                 e.printStackTrace();
+            } catch (SyntaxErrorException e) {
+                e.printStackTrace();
             }
-            System.out.print(interpreter.getPrompt());
+            interpreter.printPrompt();
         }
     }
 }

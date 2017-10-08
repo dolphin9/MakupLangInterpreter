@@ -3,33 +3,33 @@ package mua.lexer;
 import java.util.ArrayList;
 
 public abstract class Token {
-    protected enum Type {
+    protected enum TokenType {
         kNumber,
-        kWord,
+        kString,
         kList,
-        kOperator,
+        kSymbol,
     }
     /** The type of token */
-    protected Type mType;
+    protected TokenType mTokenType;
 
-    protected Token(Type type) {
-        mType = type;
+    protected Token(TokenType type) {
+        mTokenType = type;
     }
 
     public boolean isNumber() {
-        return mType == Type.kNumber;
+        return mTokenType == TokenType.kNumber;
     }
 
-    public boolean isWord() {
-        return mType == Type.kWord;
+    public boolean isString() {
+        return mTokenType == TokenType.kString;
     }
 
     public boolean isList() {
-        return mType == Type.kList;
+        return mTokenType == TokenType.kList;
     }
 
-    public boolean isOperator() {
-        return mType == Type.kOperator;
+    protected boolean isSymbol() {
+        return mTokenType == TokenType.kSymbol;
     }
 
     /** Get the value of the token, which depends on the type. */
@@ -42,7 +42,7 @@ class NumberToken extends Token {
     private double mFloatValue;
 
     NumberToken(String numStr) {
-        super(Type.kNumber);
+        super(TokenType.kNumber);
         mIsFloat = numStr.contains(".");
         if (mIsFloat)
             mFloatValue = Double.valueOf(numStr);
@@ -64,11 +64,11 @@ class NumberToken extends Token {
     }
 }
 
-class WordToken extends Token {
+class StringToken extends Token {
     private String mWord;
 
-    WordToken(String word) {
-        super(Type.kWord);
+    StringToken(String word) {
+        super(TokenType.kString);
         mWord = word;
     }
 
@@ -87,7 +87,7 @@ class ListToken extends Token {
     private ArrayList<Token> mList;
 
     ListToken(ArrayList<Token> list) {
-        super(Type.kList);
+        super(TokenType.kList);
         mList = list;
     }
 
