@@ -86,4 +86,14 @@ public class Lexer {
         return tokenList;
     }
 
+    public Token lex(Object value) throws LexicalErrorException {
+        if (value instanceof Number)
+            return new NumberToken((Number) value);
+        else if (value instanceof String)
+            return new StringToken((String) value);
+        else if (value instanceof ArrayList)
+            return new ListToken((ArrayList<Token>) value);
+        else
+            return null;
+    }
 }

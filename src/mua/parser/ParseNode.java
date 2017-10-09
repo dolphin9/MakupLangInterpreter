@@ -112,25 +112,3 @@ public class ParseNode implements NodeType {
     }
 }
 
-class WordNode extends ParseNode implements NodeType {
-    private String mWord;
-
-    WordNode(String word) {
-        mWord = word;
-    }
-
-    public String getWord() {
-        return mWord;
-    }
-
-    @Override
-    public boolean isWord() {
-        return true;
-    }
-
-    @Override
-    public boolean match(NodeType other) {
-        return other.isWord();
-    }
-}
-

@@ -29,15 +29,7 @@ public class OperatorNode extends ValueNode {
                 context.addSymbol(getWordArgAt(0), getValueArgAt(1));
                 return null;
             case kThing:
-                Object value = context.getSymbol(getWordArgAt(0));
-                if (value instanceof Number)
-                    return new NumberNode((Number) value);
-                else if (value instanceof String)
-                    return context.parse((String) value);
-                else if (value instanceof ArrayList)
-                    return context.parse((ArrayList<Token>) value);
-                else
-                    return null;
+                return context.parse(context.getSymbol(getWordArgAt(0)));
             case kErase:
                 context.removeSymbol(getWordArgAt(0));
                 return null;
@@ -74,9 +66,9 @@ public class OperatorNode extends ValueNode {
                 num1 = getNumArgAt(0);
                 num2 = getNumArgAt(1);
                 if (num1 instanceof Integer && num2 instanceof Integer)
-                    res = (Number) intOp.apply((Integer) num1, (Integer) num2);
+                    res = (Number) intOp.apply(num1.intValue(), num2.intValue());
                 else
-                    res = (Number) doubleOp.apply((Double) num1, (Double) num2);
+                    res = (Number) doubleOp.apply(num1.doubleValue(), num2.doubleValue());
                 return new NumberNode(res);
 
             case kEq:
@@ -95,9 +87,9 @@ public class OperatorNode extends ValueNode {
                 num1 = getNumOrNumOfWordArgAt(0, context);
                 num2 = getNumOrNumOfWordArgAt(1, context);
                 if (num1 instanceof Integer && num2 instanceof Integer)
-                    bool = (Boolean) intOp.apply((Integer) num1, (Integer) num2);
+                    bool = (Boolean) intOp.apply(num1.intValue(), num2.intValue());
                 else
-                    bool = (Boolean) doubleOp.apply((Double) num1, (Double) num2);
+                    bool = (Boolean) doubleOp.apply(num1.doubleValue(), num2.doubleValue());
                 return new BoolNode(bool);
 
             case kAnd:
@@ -185,11 +177,15 @@ public class OperatorNode extends ValueNode {
         return mOpType;
     }
 
-    private Number getNumArgAt(int index) {
-        return ((NumberNode) mArguments.get(index)).getValue();
+    private Number getNumArgAt(int index) throws SyntaxErrorException {
+        if (mArguments.get(index) instanceof NumberNode)
+            return ((NumberNode) mArguments.get(index)).getValue();
+        else
+            throw new InvalidArgumentTypeException();
     }
 
-    private Number getNumOrNumOfWordArgAt(int index, RunningContext context) {
+    private Number getNumOrNumOfWordArgAt(int index, RunningContext context)
+            throws SyntaxErrorException {
         NodeType type = mOpType.getArgTypeOf(index);
         if (type.isWord())
             return (Number) context.getSymbol(getWordArgAt(index));
@@ -197,16 +193,33 @@ public class OperatorNode extends ValueNode {
             return getNumArgAt(index);
     }
 
-    private String getWordArgAt(int index) {
-        return ((WordNode) mArguments.get(index)).getWord();
+    private String getWordArgAt(int index) throws SyntaxErrorException {
+        ParseNode node = mArguments.get(index);
+        if (node instanceof WordNode)
+            return ((WordNode) node).getValue();
+        else if (node instanceof StringNode) {
+            String str = ((StringNode) node).getValue();
+            if (str.startsWith("\"")) {
+                WordNode word = new WordNode(str.substring(1));
+                mArguments.set(index, word);
+                return word.getValue();
+            }
+            else
+                throw new InvalidArgumentTypeException();
+        }
+        else
+            throw new InvalidArgumentTypeException();
     }
 
     private Object getValueArgAt(int index) {
         return ((ValueNode) mArguments.get(index)).getValue();
     }
 
-    private boolean getBoolArgAt(int index) {
-        return ((BoolNode) mArguments.get(index)).getValue();
+    private boolean getBoolArgAt(int index) throws SyntaxErrorException {
+        if (mArguments.get(index) instanceof BoolNode)
+            return ((BoolNode) mArguments.get(index)).getValue();
+        else
+            throw new InvalidArgumentTypeException();
     }
 
     boolean needsMoreArguments() {
@@ -222,8 +235,8 @@ public class OperatorNode extends ValueNode {
     }
 
     void addArgument(ParseNode argument) throws SyntaxErrorException {
-        if (!mOpType.getArgTypeOf(mArguments.size()).match(argument))
-            throw new InvalidArgumentTypeException();
+        // if (!mOpType.getArgTypeOf(mArguments.size()).match(argument))
+        //     throw new InvalidArgumentTypeException();
         mArguments.add(argument);
     }
 

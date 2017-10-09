@@ -65,7 +65,7 @@ class BoolNode extends ValueNode {
 }
 
 class StringNode extends ValueNode {
-    private String mValue;
+    protected String mValue;
 
     StringNode(String value) {
         mValue = value;
@@ -84,6 +84,28 @@ class StringNode extends ValueNode {
     @Override
     public boolean match(NodeType other) {
         return other.isString() || other.isValue();
+    }
+}
+
+class WordNode extends StringNode {
+
+    WordNode(String word) {
+        super(word);
+    }
+
+    @Override
+    public String getValue() {
+        return mValue;
+    }
+
+    @Override
+    public boolean isWord() {
+        return true;
+    }
+
+    @Override
+    public boolean match(NodeType other) {
+        return other.isWord();
     }
 }
 

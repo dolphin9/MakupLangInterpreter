@@ -41,6 +41,15 @@ class NumberToken extends Token {
     private int mIntValue;
     private double mFloatValue;
 
+    NumberToken(Number number) {
+        super(TokenType.kNumber);
+        mIsFloat = !(number instanceof Integer);
+        if (mIsFloat)
+            mFloatValue = number.doubleValue();
+        else
+            mIntValue = number.intValue();
+    }
+
     NumberToken(String numStr) {
         super(TokenType.kNumber);
         mIsFloat = numStr.contains(".");

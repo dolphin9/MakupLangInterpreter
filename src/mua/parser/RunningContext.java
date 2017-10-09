@@ -15,6 +15,6 @@ public interface RunningContext {
 
     ValueNode read() throws LexicalErrorException, SyntaxErrorException;
     ValueNode readList() throws LexicalErrorException, SyntaxErrorException;
-    ValueNode parse(String string) throws LexicalErrorException, SyntaxErrorException;
-    OperatorNode parse(ArrayList<Token> tokens) throws LexicalErrorException, SyntaxErrorException;
+    ValueNode parse(Object value) throws LexicalErrorException, SyntaxErrorException;
+    // OperatorNode parse(ArrayList<Token> tokens) throws LexicalErrorException, SyntaxErrorException;
 }
