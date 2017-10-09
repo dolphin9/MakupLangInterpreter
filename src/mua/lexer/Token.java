@@ -1,17 +1,8 @@
 package mua.lexer;
 
-import java.util.ArrayList;
-
 public abstract class Token {
-    protected enum TokenType {
-        kNumber,
-        kString,
-        kList,
-        kSymbol,
-    }
     /** The type of token */
     protected TokenType mTokenType;
-
     protected Token(TokenType type) {
         mTokenType = type;
     }
@@ -34,6 +25,13 @@ public abstract class Token {
 
     /** Get the value of the token, which depends on the type. */
     public abstract Object getValue();
+
+    protected enum TokenType {
+        kNumber,
+        kString,
+        kList,
+        kSymbol,
+    }
 }
 
 class NumberToken extends Token {
@@ -61,7 +59,7 @@ class NumberToken extends Token {
 
     @Override
     public String toString() {
-        return "<Number>" + getValue().toString();
+        return getValue().toString();
     }
 
     @Override
@@ -88,36 +86,7 @@ class StringToken extends Token {
 
     @Override
     public String toString() {
-        return "<Word>" + mWord;
+        return mWord;
     }
 }
 
-class ListToken extends Token {
-    private ArrayList<Token> mList;
-
-    ListToken(ArrayList<Token> list) {
-        super(TokenType.kList);
-        mList = list;
-    }
-
-    @Override
-    public ArrayList<Token> getValue() {
-        return mList;
-    }
-
-    public Token get(int index) {
-        return mList.get(index);
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder builder = new StringBuilder();
-        builder.append("<List>[");
-        for (Token token : mList) {
-            builder.append(token);
-            builder.append(", ");
-        }
-        builder.append("]");
-        return builder.toString();
-    }
-}

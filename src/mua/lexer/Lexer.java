@@ -1,15 +1,27 @@
 package mua.lexer;
 
-import java.util.*;
+import mua.Context;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Queue;
+import java.util.Stack;
 
 public class Lexer {
+    private Context mContext;
+
+    public Lexer(Context context) {
+        mContext = context;
+    }
+
     static private String removeComments(String line) {
         return line.replaceFirst("//.*$", "");
     }
 
-    static private boolean isWordToken(String item) {
-        return (item.startsWith("\"") || item.startsWith(":"))
-                || !hasListBeginToken(item) && !hasListEndToken(item);
+    static private boolean isStringToken(String item) {
+        return !isNumberToken(item)
+                && !hasListBeginToken(item)
+                && !hasListEndToken(item);
     }
 
     static private boolean isNumberToken(String item) {
@@ -35,7 +47,7 @@ public class Lexer {
             String item = items[i];
             if (isNumberToken(item)) {
                 tokenList.add(new NumberToken(item));
-            } else if (isWordToken(item)) {
+            } else if (isStringToken(item)) {
                 tokenList.add(new StringToken(item));
             } else if (hasListBeginToken(item)) {
                 int bracketCount = 0;
@@ -75,10 +87,15 @@ public class Lexer {
                     }
                     if (bracketCount == 0) {
                         tokenList.add(tokenStack.pop());
-                        if (!tokenStack.empty())
-                            throw new BracketNotPairedException();
                         i = j;
                         break;
+                    }
+                    while (j == nItems - 1 && !tokenStack.empty()) {
+                        String nextPart = mContext.lexerWait();
+                        nextPart = removeComments(nextPart);
+                        line += " " + nextPart;
+                        items = line.split(" ");
+                        nItems = items.length;
                     }
                 }
             }
@@ -91,8 +108,8 @@ public class Lexer {
             return new NumberToken((Number) value);
         else if (value instanceof String)
             return new StringToken((String) value);
-        else if (value instanceof ArrayList)
-            return new ListToken((ArrayList<Token>) value);
+        else if (value instanceof ListToken)
+            return (ListToken) value;
         else
             return null;
     }

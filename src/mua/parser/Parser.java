@@ -1,37 +1,53 @@
 package mua.parser;
 
+import mua.Context;
+import mua.lexer.LexicalErrorException;
+import mua.lexer.ListToken;
 import mua.lexer.Token;
 
-import java.util.ArrayList;
 import java.util.Queue;
 import java.util.Stack;
 
 public class Parser {
-    public ParseTree parse(Queue<Token> tokens) throws SyntaxErrorException {
+    private Context mContext;
+
+    public Parser(Context context) {
+        mContext = context;
+    }
+
+    public ParseTree parse(Queue<Token> tokens) throws SyntaxErrorException, LexicalErrorException {
         Stack<OperatorNode> opNodeStack = new Stack<>();
-        Token token = tokens.poll();
-        if (!token.isString())
-            throw new UnknownOperatorException();
-        String tokenStr = (String) token.getValue();
-        OperatorNode root = OperatorNode.extract(tokenStr);
-        opNodeStack.push(root);
-        while (!opNodeStack.isEmpty()) {
-            OperatorNode op = opNodeStack.peek();
-            if (op.needsMoreArguments()) {
-                if (tokens.isEmpty())
-                    throw new MissingArgumentException();
-                ParseNode node = parse(tokens.poll(), op.nextArgType());
-                if (node.isOperator() && ((OperatorNode) node).needsMoreArguments())
-                    opNodeStack.push((OperatorNode) node);
-                else
-                    op.addArgument(node);
-            } else {
-                opNodeStack.pop();
-                if (!opNodeStack.empty()) {
-                    opNodeStack.peek().addArgument(op);
-                } else
-                    root = op;
+        OperatorNode root = null;
+        while (!tokens.isEmpty()) {
+            Token token = tokens.poll();
+            if (!token.isString())
+                throw new UnknownOperatorException();
+            String tokenStr = (String) token.getValue();
+            root = OperatorNode.extract(tokenStr);
+            opNodeStack.push(root);
+            while (!opNodeStack.isEmpty()) {
+                OperatorNode op = opNodeStack.peek();
+                if (op.needsMoreArguments()) {
+                    while (tokens.isEmpty()) {
+                        if (mContext.isNested())
+                            throw new MissingArgumentException();
+                        tokens = mContext.parserWait();
+                    }
+                    ParseNode node = parse(tokens.poll());
+                    if (node.isOperator() && ((OperatorNode) node).needsMoreArguments())
+                        opNodeStack.push((OperatorNode) node);
+                    else
+                        op.addArgument(node);
+                } else {
+                    opNodeStack.pop();
+                    if (!opNodeStack.empty()) {
+                        opNodeStack.peek().addArgument(op);
+                    } else
+                        root = op;
+                }
             }
+            mContext.run(root);
+            root = null;
         }
         if (!tokens.isEmpty())
             throw new RedundentTokenException();
@@ -40,34 +56,17 @@ public class Parser {
     }
 
     public ValueNode parse(Token token) throws SyntaxErrorException {
-        return (ValueNode) parse(token, ParseNode.kValue);
-    }
-
-    public ParseNode parse(Token token, NodeType type) throws SyntaxErrorException {
-        if (type.isWord()) {
-            if (!token.isString())
-                throw new InvalidArgumentTypeException();
+        if (token.isString()) {
             String tokenStr = (String) token.getValue();
-            if (tokenStr.startsWith("\""))
-                return new WordNode(tokenStr.substring(1));
-            else if (tokenStr.startsWith(":"))
+            try {
                 return OperatorNode.extract(tokenStr);
-            else
-                throw new InvalidArgumentTypeException();
-        } else if (type.isValue()) {
-            if (token.isNumber()) {
-                return new NumberNode((Number) token.getValue());
-            } else if (token.isList()) {
-                return new ListNode((ArrayList<Token>) token.getValue());
-            } else if (token.isString()) {
-                String tokenStr = (String) token.getValue();
-                try {
-                    return OperatorNode.extract(tokenStr);
-                } catch (UnknownOperatorException e) {
-                    return new StringNode(tokenStr);
-                }
-            } else
-                throw new InvalidArgumentTypeException();
+            } catch (UnknownOperatorException e) {
+                return new StringNode(tokenStr);
+            }
+        } else if (token.isNumber()) {
+            return new NumberNode((Number) token.getValue());
+        } else if (token.isList()) {
+            return new ListNode((ListToken) token);
         } else
             throw new InvalidArgumentTypeException();
     }
