@@ -46,11 +46,11 @@ public class Parser {
                         root = op;
                 }
             }
-            mContext.run(root);
-            root = null;
+            if (!tokens.isEmpty()) {
+                mContext.run(root);
+                root = null;
+            }
         }
-        if (!tokens.isEmpty())
-            throw new RedundentTokenException();
 
         return new ParseTree(root);
     }

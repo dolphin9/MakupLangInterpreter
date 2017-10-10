@@ -17,6 +17,7 @@ public class Interpreter {
     private static final String READLINST_PROMPT = "..... : ";
     private SymbolTable mTable = new SymbolTable();
     private PrintStream mOut;
+    private PrintStream mPrompt;
     private Scanner mScanner;
     private Context mContext = new Context();
     private Lexer mLexer = new Lexer(mContext);
@@ -25,10 +26,17 @@ public class Interpreter {
     public Interpreter(Scanner scanner, PrintStream printStream) {
         mScanner = scanner;
         mOut = printStream;
+        mPrompt = printStream;
+    }
+
+    public Interpreter(Scanner scanner, PrintStream printStream, PrintStream promptStream) {
+        mScanner = scanner;
+        mOut = printStream;
+        mPrompt = promptStream;
     }
 
     public void printPrompt() {
-        mOut.print(PROMPT);
+        mPrompt.print(PROMPT);
     }
 
     public void execute(String line) throws LexicalErrorException, SyntaxErrorException {
@@ -38,7 +46,7 @@ public class Interpreter {
         ParseTree parseTree = parser.parse(tokenQueue);
         OperatorNode op = parseTree.getRoot();
 
-        // mContext.run(op);
+        mContext.run(op);
         // tokenQueue.forEach(mOut::println);
     }
 
@@ -97,12 +105,12 @@ public class Interpreter {
 
         @Override
         public void print(Object value) {
-            System.out.println(value);
+            mOut.println(value);
         }
 
         @Override
         public ValueNode read() throws LexicalErrorException, SyntaxErrorException {
-            mOut.print(READ_PROMPT);
+            mPrompt.print(READ_PROMPT);
             String item = mScanner.nextLine();
             if (item.contains(" "))
                 throw new LexicalErrorException(); // TODO: 17-10-8 Too many items.
@@ -111,7 +119,7 @@ public class Interpreter {
 
         @Override
         public ValueNode readList() throws LexicalErrorException, SyntaxErrorException {
-            mOut.print(READLINST_PROMPT);
+            mPrompt.print(READLINST_PROMPT);
             String line = mScanner.nextLine();
             return mParser.parse(mLexer.lex("[" + line + "]").poll());
         }
@@ -127,13 +135,13 @@ public class Interpreter {
 
         @Override
         public String lexerWait() {
-            mOut.print(CMD_WAIT_PROMPT);
+            mPrompt.print(CMD_WAIT_PROMPT);
             return mScanner.nextLine();
         }
 
         @Override
         public Queue<Token> parserWait() throws LexicalErrorException {
-            mOut.print(CMD_WAIT_PROMPT);
+            mPrompt.print(CMD_WAIT_PROMPT);
             return mLexer.lex(mScanner.nextLine());
         }
     }
