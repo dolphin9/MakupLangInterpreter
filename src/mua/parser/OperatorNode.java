@@ -71,7 +71,16 @@ public class OperatorNode extends ValueNode {
         }
     }
 
+    /**
+     * It executes the operator itself, and returns the result value.
+     *
+     * @param context the context in which it runs
+     * @return the result value, as a value node
+     * @throws SyntaxErrorException
+     * @throws LexicalErrorException
+     */
     public ValueNode execute(Context context) throws SyntaxErrorException, LexicalErrorException {
+        // Execute the operator nodes in the parse tree in post-order recursively.
         for (int i = 0; i < mArguments.size(); ++i) {
             if (mArguments.get(i).isOperator()) {
                 OperatorNode op = (OperatorNode) mArguments.get(i);
@@ -86,6 +95,7 @@ public class OperatorNode extends ValueNode {
         BiFunction<Double, Double, Object> doubleOp = null;
         BiFunction<Boolean, Boolean, Boolean> boolOp = null;
         boolean bool1 = false, bool2 = false, bool = false;
+        // Execute itself depending on its type of operator.
         switch (mOpType) {
             case kMake:
                 context.addSymbol(getWordArgAt(0), getValueArgAt(1));
