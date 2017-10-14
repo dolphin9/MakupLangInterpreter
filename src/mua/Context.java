@@ -1,11 +1,14 @@
-package mua.parser;
+package mua;
 
 import mua.lexer.LexicalErrorException;
 import mua.lexer.Token;
+import mua.parser.OperatorNode;
+import mua.parser.SyntaxErrorException;
+import mua.parser.ValueNode;
 
-import java.util.ArrayList;
+import java.util.Queue;
 
-public interface RunningContext {
+public interface Context {
     void addSymbol(String symbol, Object value);
     Object getSymbol(String symbol);
     boolean isSymbol(String string);
@@ -16,5 +19,12 @@ public interface RunningContext {
     ValueNode read() throws LexicalErrorException, SyntaxErrorException;
     ValueNode readList() throws LexicalErrorException, SyntaxErrorException;
     ValueNode parse(Object value) throws LexicalErrorException, SyntaxErrorException;
-    // OperatorNode parse(ArrayList<Token> tokens) throws LexicalErrorException, SyntaxErrorException;
+
+    String lexerWait();
+
+    Queue<Token> parserWait() throws LexicalErrorException;
+
+    boolean isNested();
+
+    void run(OperatorNode op) throws LexicalErrorException, SyntaxErrorException;
 }

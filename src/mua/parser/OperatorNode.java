@@ -1,20 +1,91 @@
 package mua.parser;
 
+import mua.Context;
 import mua.lexer.LexicalErrorException;
-import mua.lexer.Token;
 
 import java.util.ArrayList;
-import java.util.function.*;
+import java.util.function.BiFunction;
 
 public class OperatorNode extends ValueNode {
-    private static final NodeType kNumOrWord = ParseNode.or(kNumber, kWord);
+    private ArrayList<ParseNode> mArguments = new ArrayList<>();
+    private OpType mOpType;
 
-    public ValueNode execute(RunningContext context) throws SyntaxErrorException, LexicalErrorException {
+    private OperatorNode(OpType opType) {
+        mOpType = opType;
+    }
+
+    static OperatorNode extract(String opStr) throws SyntaxErrorException {
+        if (opStr.startsWith(":")) {
+            OperatorNode op = new OperatorNode(OpType.kThing);
+            op.addArgument(new WordNode(opStr.substring(1)));
+            return op;
+        } else {
+            OperatorNode op = OperatorNode.tryExtract(opStr);
+            if (op == null)
+                throw new UnknownOperatorException();
+            else
+                return op;
+        }
+    }
+
+    static private OperatorNode tryExtract(String opStr) {
+        switch (opStr) {
+            case "make":
+                return new OperatorNode(OpType.kMake);
+            case "thing":
+                return new OperatorNode(OpType.kThing);
+            case "erase":
+                return new OperatorNode(OpType.kErase);
+            case "isname":
+                return new OperatorNode(OpType.kIsName);
+            case "print":
+                return new OperatorNode(OpType.kPrint);
+            case "read":
+                return new OperatorNode(OpType.kRead);
+            case "readlinst":
+                return new OperatorNode(OpType.kReadLinst);
+            case "add":
+                return new OperatorNode(OpType.kAdd);
+            case "sub":
+                return new OperatorNode(OpType.kSub);
+            case "mul":
+                return new OperatorNode(OpType.kMul);
+            case "div":
+                return new OperatorNode(OpType.kDiv);
+            case "mod":
+                return new OperatorNode(OpType.kMod);
+            case "eq":
+                return new OperatorNode(OpType.kEq);
+            case "gt":
+                return new OperatorNode(OpType.kGt);
+            case "lt":
+                return new OperatorNode(OpType.kLt);
+            case "and":
+                return new OperatorNode(OpType.kAnd);
+            case "or":
+                return new OperatorNode(OpType.kOr);
+            case "not":
+                return new OperatorNode(OpType.kNot);
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * It executes the operator itself, and returns the result value.
+     *
+     * @param context the context in which it runs
+     * @return the result value, as a value node
+     * @throws SyntaxErrorException
+     * @throws LexicalErrorException
+     */
+    public ValueNode execute(Context context) throws SyntaxErrorException, LexicalErrorException {
+        // Execute the operator nodes in the parse tree in post-order recursively.
         for (int i = 0; i < mArguments.size(); ++i) {
             if (mArguments.get(i).isOperator()) {
                 OperatorNode op = (OperatorNode) mArguments.get(i);
                 ValueNode value = op.execute(context);
-                if (value == null || !value.match(mOpType.getArgTypeOf(i)))
+                if (value == null)
                     throw new InvalidArgumentTypeException();
                 mArguments.set(i, value);
             }
@@ -24,6 +95,7 @@ public class OperatorNode extends ValueNode {
         BiFunction<Double, Double, Object> doubleOp = null;
         BiFunction<Boolean, Boolean, Boolean> boolOp = null;
         boolean bool1 = false, bool2 = false, bool = false;
+        // Execute itself depending on its type of operator.
         switch (mOpType) {
             case kMake:
                 context.addSymbol(getWordArgAt(0), getValueArgAt(1));
@@ -112,60 +184,8 @@ public class OperatorNode extends ValueNode {
     }
 
     @Override
-    public boolean match(NodeType other) {
-        return true;
-    }
-
-    @Override
     public Object getValue() {
         return null;
-    }
-
-    private enum OpType {
-        kMake(new NodeType[]{kWord, kValue}),
-        kThing(new NodeType[]{kWord}),
-        kErase(new NodeType[]{kWord}),
-        kIsName(new NodeType[]{kWord}),
-        kPrint(new NodeType[]{kValue}),
-        kRead(new NodeType[]{}),
-        kReadLinst(new NodeType[]{}),
-        kAdd(new NodeType[]{kNumber, kNumber}),
-        kSub(new NodeType[]{kNumber, kNumber}),
-        kMul(new NodeType[]{kNumber, kNumber}),
-        kDiv(new NodeType[]{kNumber, kNumber}),
-        kMod(new NodeType[]{kNumber, kNumber}),
-        kEq(new NodeType[]{kNumOrWord, kNumOrWord}),
-        kGt(new NodeType[]{kNumOrWord, kNumOrWord}),
-        kLt(new NodeType[]{kNumOrWord, kNumOrWord}),
-        kAnd(new NodeType[]{kBool, kBool}),
-        kOr(new NodeType[]{kBool, kBool}),
-        kNot(new NodeType[]{kBool});
-        // ...
-
-        private NodeType[] mArgTypes;
-
-        OpType(NodeType[] nodeTypes) {
-            mArgTypes = nodeTypes;
-        }
-
-        public NodeType getArgTypeOf(int index) {
-            return mArgTypes[index];
-        }
-
-        public int getNumArgs() {
-            return mArgTypes.length;
-        }
-
-    }
-
-    private Runnable mFunction;
-
-    private ArrayList<ParseNode> mArguments = new ArrayList<>();
-
-    private OpType mOpType;
-
-    private OperatorNode(OpType opType) {
-        mOpType = opType;
     }
 
     @Override
@@ -173,31 +193,29 @@ public class OperatorNode extends ValueNode {
         return true;
     }
 
-    public OpType getOpType() {
-        return mOpType;
-    }
-
     private Number getNumArgAt(int index) throws SyntaxErrorException {
-        if (mArguments.get(index) instanceof NumberNode)
+        if (mArguments.get(index).isNumber())
             return ((NumberNode) mArguments.get(index)).getValue();
         else
             throw new InvalidArgumentTypeException();
     }
 
-    private Number getNumOrNumOfWordArgAt(int index, RunningContext context)
+    private Number getNumOrNumOfWordArgAt(int index, Context context)
             throws SyntaxErrorException {
-        NodeType type = mOpType.getArgTypeOf(index);
-        if (type.isWord())
+        ParseNode node = mArguments.get(index);
+        if (node.isWord())
             return (Number) context.getSymbol(getWordArgAt(index));
-        else
+        else if (node.isNumber())
             return getNumArgAt(index);
+        else
+            throw new InvalidArgumentTypeException();
     }
 
     private String getWordArgAt(int index) throws SyntaxErrorException {
         ParseNode node = mArguments.get(index);
-        if (node instanceof WordNode)
+        if (node.isWord())
             return ((WordNode) node).getValue();
-        else if (node instanceof StringNode) {
+        else if (node.isString()) {
             String str = ((StringNode) node).getValue();
             if (str.startsWith("\"")) {
                 WordNode word = new WordNode(str.substring(1));
@@ -216,7 +234,7 @@ public class OperatorNode extends ValueNode {
     }
 
     private boolean getBoolArgAt(int index) throws SyntaxErrorException {
-        if (mArguments.get(index) instanceof BoolNode)
+        if (mArguments.get(index).isBool())
             return ((BoolNode) mArguments.get(index)).getValue();
         else
             throw new InvalidArgumentTypeException();
@@ -226,56 +244,39 @@ public class OperatorNode extends ValueNode {
         return mArguments.size() < mOpType.getNumArgs();
     }
 
-    public ArrayList<ParseNode> getArguments() {
-        return mArguments;
-    }
-
-    NodeType nextArgType() {
-        return mOpType.getArgTypeOf(mArguments.size());
-    }
-
-    void addArgument(ParseNode argument) throws SyntaxErrorException {
-        // if (!mOpType.getArgTypeOf(mArguments.size()).match(argument))
-        //     throw new InvalidArgumentTypeException();
+    void addArgument(ParseNode argument) {
         mArguments.add(argument);
     }
 
-    static OperatorNode extract(String opStr) throws SyntaxErrorException {
-        if (opStr.startsWith(":")) {
-            OperatorNode op = new OperatorNode(OpType.kThing);
-            op.addArgument(new WordNode(opStr.substring(1)));
-            return op;
-        } else {
-            OperatorNode op = OperatorNode.tryExtract(opStr);
-            if (op == null)
-                throw new UnknownOperatorException();
-            else
-                return op;
-        }
-    }
+    private enum OpType {
+        kMake(2),
+        kThing(1),
+        kErase(1),
+        kIsName(1),
+        kPrint(1),
+        kRead(0),
+        kReadLinst(0),
+        kAdd(2),
+        kSub(2),
+        kMul(2),
+        kDiv(2),
+        kMod(2),
+        kEq(2),
+        kGt(2),
+        kLt(2),
+        kAnd(2),
+        kOr(2),
+        kNot(1);
+        // ...
 
-    static OperatorNode tryExtract(String opStr) {
-        final NodeType kNumOrWord = ParseNode.or(kNumber, kWord);
-        switch (opStr) {
-            case "make": return new OperatorNode(OpType.kMake);
-            case "thing": return new OperatorNode(OpType.kThing);
-            case "erase": return new OperatorNode(OpType.kErase);
-            case "isname": return new OperatorNode(OpType.kIsName);
-            case "print": return new OperatorNode(OpType.kPrint);
-            case "read": return new OperatorNode(OpType.kRead);
-            case "readlinst": return new OperatorNode(OpType.kReadLinst);
-            case "add": return new OperatorNode(OpType.kAdd);
-            case "sub": return new OperatorNode(OpType.kSub);
-            case "mul": return new OperatorNode(OpType.kMul);
-            case "div": return new OperatorNode(OpType.kDiv);
-            case "mod": return new OperatorNode(OpType.kMod);
-            case "eq": return new OperatorNode(OpType.kEq);
-            case "gt": return new OperatorNode(OpType.kGt);
-            case "lt": return new OperatorNode(OpType.kLt);
-            case "and": return new OperatorNode(OpType.kAnd);
-            case "or": return new OperatorNode(OpType.kOr);
-            case "not": return new OperatorNode(OpType.kNot);
-            default: return null;
+        private int mNumArgs;
+
+        OpType(int numArgs) {
+            mNumArgs = numArgs;
+        }
+
+        public int getNumArgs() {
+            return mNumArgs;
         }
     }
 }

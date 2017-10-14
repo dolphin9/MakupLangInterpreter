@@ -1,20 +1,6 @@
 package mua.parser;
 
-import mua.lexer.Token;
-
-import java.util.ArrayList;
-
 public abstract class ValueNode extends ParseNode {
-    @Override
-    public boolean isValue() {
-        return true;
-    }
-
-    @Override
-    public boolean match(NodeType other) {
-        return other.isValue();
-    }
-
     abstract public Object getValue();
 }
 
@@ -28,11 +14,6 @@ class NumberNode extends ValueNode {
     @Override
     public boolean isNumber() {
         return true;
-    }
-
-    @Override
-    public boolean match(NodeType other) {
-        return other.isNumber() || other.isValue();
     }
 
     @Override
@@ -51,11 +32,6 @@ class BoolNode extends ValueNode {
     @Override
     public boolean isBool() {
         return true;
-    }
-
-    @Override
-    public boolean match(NodeType other) {
-        return other.isBool() || other.isValue();
     }
 
     @Override
@@ -81,10 +57,6 @@ class StringNode extends ValueNode {
         return true;
     }
 
-    @Override
-    public boolean match(NodeType other) {
-        return other.isString() || other.isValue();
-    }
 }
 
 class WordNode extends StringNode {
@@ -103,31 +75,5 @@ class WordNode extends StringNode {
         return true;
     }
 
-    @Override
-    public boolean match(NodeType other) {
-        return other.isWord();
-    }
 }
 
-class ListNode extends ValueNode {
-    private ArrayList<Token> mValue;
-
-    ListNode(ArrayList<Token> value) {
-        mValue = value;
-    }
-
-    @Override
-    public ArrayList<Token> getValue() {
-        return mValue;
-    }
-
-    @Override
-    public boolean isList() {
-        return true;
-    }
-
-    @Override
-    public boolean match(NodeType other) {
-        return other.isList() || other.isValue();
-    }
-}

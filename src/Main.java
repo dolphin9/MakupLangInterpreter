@@ -13,9 +13,7 @@ public class Main {
             String line = scanner.nextLine();
             try {
                 interpreter.execute(line);
-            } catch (LexicalErrorException e) {
-                e.printStackTrace();
-            } catch (SyntaxErrorException e) {
+            } catch (LexicalErrorException | SyntaxErrorException e) {
                 e.printStackTrace();
             }
             interpreter.printPrompt();

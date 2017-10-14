@@ -1,58 +1,88 @@
 package mua;
 
-import mua.lexer.*;
+import mua.lexer.Lexer;
+import mua.lexer.LexicalErrorException;
+import mua.lexer.Token;
 import mua.parser.*;
 
 import java.io.PrintStream;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Queue;
 import java.util.Scanner;
 
 public class Interpreter {
+    private static final String PROMPT = "(mua) > ";
+    private static final String CMD_WAIT_PROMPT = " ...  > ";
+    private static final String READ_PROMPT = " ...  : ";
+    private static final String READLINST_PROMPT = "..... : ";
     private SymbolTable mTable = new SymbolTable();
     private PrintStream mOut;
+    private PrintStream mPrompt;
     private Scanner mScanner;
-    private Lexer mLexer = new Lexer();
-    private Parser mParser = new Parser();
     private Context mContext = new Context();
+    private Lexer mLexer = new Lexer(mContext);
+    private Parser mParser = new Parser(mContext);
 
     public Interpreter(Scanner scanner, PrintStream printStream) {
         mScanner = scanner;
         mOut = printStream;
+        mPrompt = printStream;
+    }
+
+    public Interpreter(Scanner scanner, PrintStream printStream, PrintStream promptStream) {
+        mScanner = scanner;
+        mOut = printStream;
+        mPrompt = promptStream;
     }
 
     public void printPrompt() {
-        mOut.print(" (mua) > ");
+        mPrompt.print(PROMPT);
     }
 
     public void execute(String line) throws LexicalErrorException, SyntaxErrorException {
         Lexer lexer = mLexer;
         Parser parser = mParser;
         Queue<Token> tokenQueue = lexer.lex(line);
-
         ParseTree parseTree = parser.parse(tokenQueue);
-
         OperatorNode op = parseTree.getRoot();
 
-        while (op != null) {
-            ValueNode value = op.execute(mContext);
-            if (value == null)
-                break;
-            if (value.isOperator())
-                op = (OperatorNode) value;
-            else if (value.isString())
-                op = parser.parse(lexer.lex((String) value.getValue())).getRoot();
-            else if (value.isList()) {
-                Queue<Token> tokens = new ArrayDeque<>((ArrayList<Token>) value.getValue());
-                op = parser.parse(tokens).getRoot();
-            }
-        }
-
+        mContext.run(op);
         // tokenQueue.forEach(mOut::println);
     }
 
-    private class Context implements RunningContext {
+    private class Context implements mua.Context {
+        private boolean mNested = false;
+
+        @Override
+        public boolean isNested() {
+            return mNested;
+        }
+
+        private void setNested(boolean nested) {
+            mNested = nested;
+        }
+
+        @Override
+        public void run(OperatorNode op) throws LexicalErrorException, SyntaxErrorException {
+            setNested(false);
+            ValueNode value = op.execute(this);
+            setNested(true);
+
+            while (value != null) {
+                if (value.isOperator())
+                    op = (OperatorNode) value;
+                else if (value.isString())
+                    op = mParser.parse(mLexer.lex((String) value.getValue())).getRoot();
+                else if (value.isList()) {
+                    Queue<Token> tokens = new ArrayDeque<>(((ListNode) value).getTokens());
+                    op = mParser.parse(tokens).getRoot();
+                } else
+                    throw new UnknownOperatorException();
+                if (op == null)
+                    break;
+            }
+        }
+
         @Override
         public void addSymbol(String symbol, Object value) {
             mTable.put(symbol, value);
@@ -75,11 +105,12 @@ public class Interpreter {
 
         @Override
         public void print(Object value) {
-            System.out.println(value);
+            mOut.println(value);
         }
 
         @Override
         public ValueNode read() throws LexicalErrorException, SyntaxErrorException {
+            mPrompt.print(READ_PROMPT);
             String item = mScanner.nextLine();
             if (item.contains(" "))
                 throw new LexicalErrorException(); // TODO: 17-10-8 Too many items.
@@ -88,6 +119,7 @@ public class Interpreter {
 
         @Override
         public ValueNode readList() throws LexicalErrorException, SyntaxErrorException {
+            mPrompt.print(READLINST_PROMPT);
             String line = mScanner.nextLine();
             return mParser.parse(mLexer.lex("[" + line + "]").poll());
         }
@@ -99,6 +131,18 @@ public class Interpreter {
                 return mParser.parse(token);
             else
                 return null;
+        }
+
+        @Override
+        public String lexerWait() {
+            mPrompt.print(CMD_WAIT_PROMPT);
+            return mScanner.nextLine();
+        }
+
+        @Override
+        public Queue<Token> parserWait() throws LexicalErrorException {
+            mPrompt.print(CMD_WAIT_PROMPT);
+            return mLexer.lex(mScanner.nextLine());
         }
     }
 }
