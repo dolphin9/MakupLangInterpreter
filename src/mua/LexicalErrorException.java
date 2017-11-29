@@ -1,4 +1,4 @@
-package mua.lexer;
+package mua;
 
 public class LexicalErrorException extends Exception {
     // TODO: 17-9-28 To be implemented.

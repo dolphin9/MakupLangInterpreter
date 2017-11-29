@@ -5,10 +5,6 @@ public class SyntaxErrorException extends Exception {
 
 }
 
-class InvalidArgumentTypeException extends SyntaxErrorException {
-    // TODO: 17-9-28 To be implemented.
-}
-
 class MissingArgumentException extends SyntaxErrorException {
 
 }

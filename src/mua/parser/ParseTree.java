@@ -1,13 +1,15 @@
 package mua.parser;
 
-public class ParseTree {
-    private OperatorNode mRoot;
+import mua.Operator;
 
-    public ParseTree(OperatorNode root) {
+public class ParseTree {
+    private Operator mRoot;
+
+    public ParseTree(Operator root) {
         mRoot = root;
     }
 
-    public OperatorNode getRoot() {
+    public Operator getRoot() {
         return mRoot;
     }
 }

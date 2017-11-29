@@ -1,30 +1,32 @@
 package mua;
 
-import mua.lexer.LexicalErrorException;
-import mua.lexer.Token;
-import mua.parser.OperatorNode;
 import mua.parser.SyntaxErrorException;
-import mua.parser.ValueNode;
 
-import java.util.Queue;
+import java.io.IOException;
 
 public interface Context {
-    void addSymbol(String symbol, Object value);
-    Object getSymbol(String symbol);
+    void addSymbol(String symbol, Value value);
+
+    Value getSymbol(String symbol);
     boolean isSymbol(String string);
     void removeSymbol(String symbol);
 
-    void print(Object value);
+    void print(Value value);
 
-    ValueNode read() throws LexicalErrorException, SyntaxErrorException;
-    ValueNode readList() throws LexicalErrorException, SyntaxErrorException;
-    ValueNode parse(Object value) throws LexicalErrorException, SyntaxErrorException;
+    boolean isExecutable(String item);
 
-    String lexerWait();
+    Executable getExecutable(String item) throws IllegalAccessException, InstantiationException;
 
-    Queue<Token> parserWait() throws LexicalErrorException;
+    Value read() throws LexicalErrorException, SyntaxErrorException, IOException;
+
+    Value readList() throws LexicalErrorException, SyntaxErrorException, IOException;
+    // Value parse(Object value) throws LexicalErrorException, SyntaxErrorException;
+
+    // String lexerWait();
+
+    // Queue<Token> parserWait() throws LexicalErrorException;
 
     boolean isNested();
 
-    void run(OperatorNode op) throws LexicalErrorException, SyntaxErrorException;
+    // void run(Operator op) throws LexicalErrorException, SyntaxErrorException;
 }
