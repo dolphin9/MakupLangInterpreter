@@ -64,6 +64,17 @@ public abstract class Operator extends Value implements Executable {
         }
     }
 
+    @Override
+    public Operator clone() {
+        Operator op = null;
+        try {
+            op = getClass().newInstance();
+        } catch (InstantiationException | IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        return op;
+    }
+
     /*
     public Value tmp(Context context) throws SyntaxErrorException, LexicalErrorException {
         // Execute the operator nodes in the parse tree in post-order recursively.
@@ -236,7 +247,7 @@ public abstract class Operator extends Value implements Executable {
 
     @Override
     public String toString() {
-        return null;
+        return getClass().getSimpleName().toLowerCase();
     }
 
     /*
@@ -284,7 +295,7 @@ public abstract class Operator extends Value implements Executable {
             Value value = getValueArgAt(1);
             if (value instanceof ListValue) {
                 if (Function.isFunction((ListValue) value)) {
-                    value = new Function(((ListValue) value).mList);
+                    value = new Function(word, ((ListValue) value).mList);
                 }
             }
             context.addSymbol(word, value);

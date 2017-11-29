@@ -1,21 +1,32 @@
 package mua;
 
 import mua.parser.SyntaxErrorException;
+import mua.parser.UnknownOperatorException;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Function extends ListValue implements Executable {
-    private List<WordValue> mFormalArgList;
-    private List<Value> mInstructionList;
-    private List<Value> mActualArgList;
+    final private List<WordValue> mFormalArgList =
+            ((ListValue) mList.get(0)).mList.stream()
+                    .map(value -> (WordValue) value)
+                    .collect(Collectors.toList());
+    final private List<Value> mInstructionList =
+            ((ListValue) mList.get(1)).mList;
+    private final String mName;
+    private List<Value> mActualArgList = new ArrayList<>();
+    private LocalContext mLocalContext;
 
-    public Function(List<Value> list) {
+    public Function(String name, List<Value> list) {
         super(list);
-        mFormalArgList = new ArrayList<>();
-        for (Value value : ((ListValue) list.get(0)).mList)
-            mFormalArgList.add((WordValue) value);
-        mInstructionList = ((ListValue) list.get(1)).mList;
+        mName = name;
+    }
+
+    private Function(Function function) {
+        super(function.mList);
+        mName = function.getName();
     }
 
     public static boolean isFunction(ListValue list) {
@@ -29,18 +40,144 @@ public class Function extends ListValue implements Executable {
         return true;
     }
 
+    public String getName() {
+        return mName;
+    }
+
     @Override
-    public Value execute(Context context) throws SyntaxErrorException, LexicalErrorException {
-        return null;
+    public String toString() {
+        return mName;
+    }
+
+    @Override
+    public Value execute(Context globalContext) throws SyntaxErrorException, LexicalErrorException, IllegalAccessException, IOException, InstantiationException {
+        mLocalContext = new LocalContext(globalContext);
+
+        for (int i = 0; i < mFormalArgList.size(); ++i)
+            mLocalContext.addSymbol(mFormalArgList.get(i).toString(), mActualArgList.get(i));
+
+        mLocalContext.merge(globalContext.getSymbolTable());
+        mLocalContext.run();
+        return mLocalContext.getOutputValue();
     }
 
     @Override
     public boolean needsMoreArguments() {
-        return false;
+        return mActualArgList.size() < mFormalArgList.size();
     }
 
     @Override
     public void addArgument(Value argument) {
+        int index = mActualArgList.size();
+        mActualArgList.add(argument);
+    }
 
+    @Override
+    public Function clone() {
+        return new Function(this);
+    }
+
+    private class LocalContext implements FunctionContext {
+        private Context mGlobalContext;
+        private int mInstructionPointer = 0;
+        private SymbolTable mLocalTable = new SymbolTable();
+        private Value mOutputValue = null;
+
+        LocalContext(Context globalContext) {
+            mGlobalContext = globalContext;
+        }
+
+        @Override
+        public void addSymbol(String symbol, Value value) {
+            mLocalTable.put(symbol, value);
+        }
+
+        @Override
+        public Value getSymbol(String symbol) {
+            return mLocalTable.get(symbol);
+        }
+
+        @Override
+        public boolean isSymbol(String string) {
+            return mLocalTable.hasSymbol(string);
+        }
+
+        @Override
+        public void removeSymbol(String symbol) {
+            mLocalTable.remove(symbol);
+        }
+
+        public void merge(SymbolTable other) {
+            mLocalTable.merge(other);
+        }
+
+        @Override
+        public void print(Value value) {
+            mGlobalContext.print(value);
+        }
+
+        @Override
+        public SymbolTable getSymbolTable() {
+            return mLocalTable;
+        }
+
+        @Override
+        public boolean isExecutable(String instruction) {
+            return isSymbol(instruction) && getSymbol(instruction) instanceof Executable;
+        }
+
+        @Override
+        public Executable getExecutable(String instruction) throws IllegalAccessException, InstantiationException {
+            return ((Executable) mLocalTable.get(instruction)).clone();
+        }
+
+        @Override
+        public Value read() throws LexicalErrorException, SyntaxErrorException, IOException {
+            return mGlobalContext.read();
+        }
+
+        @Override
+        public Value readList() throws LexicalErrorException, SyntaxErrorException, IOException {
+            return mGlobalContext.readList();
+        }
+
+        @Override
+        public boolean hasNextInstruction() {
+            return mInstructionPointer < mInstructionList.size();
+        }
+
+        @Override
+        public Value nextInstruction() throws IOException, UnknownOperatorException, InstantiationException, IllegalAccessException {
+            Value instruction = mInstructionList.get(mInstructionPointer++);
+            if (instruction instanceof NumberValue)
+                return instruction;
+            else if (instruction instanceof WordValue) {
+                String instructionStr = instruction.toString();
+                if (instructionStr.startsWith(":"))
+                    return getSymbol(instructionStr.substring(1));
+                else if (instructionStr.contains("\""))
+                    return new WordValue(instructionStr.substring(1));
+                else if (isExecutable(instructionStr))
+                    return (Value) getExecutable(instructionStr);
+                else
+                    throw new UnknownOperatorException();
+            } else
+                return instruction;
+        }
+
+        @Override
+        public void stop() {
+            mInstructionPointer = mInstructionList.size();
+        }
+
+        @Override
+        public Value getOutputValue() {
+            return mOutputValue;
+        }
+
+        @Override
+        public void setOutputValue(Value outputValue) {
+            mOutputValue = outputValue;
+        }
     }
 }

@@ -21,4 +21,8 @@ public class SymbolTable {
     public boolean hasSymbol(String word) {
         return mTable.containsKey(word);
     }
+
+    public void merge(SymbolTable other) {
+        mTable.putAll(other.mTable);
+    }
 }

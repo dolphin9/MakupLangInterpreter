@@ -1,0 +1,6 @@
+make "print_ [
+    [a]
+    [print :a]
+]
+make "b 1
+print_ :b

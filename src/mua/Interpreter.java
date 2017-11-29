@@ -6,7 +6,6 @@ import mua.parser.UnknownOperatorException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Scanner;
-import java.util.Stack;
 import java.util.logging.Logger;
 
 public class Interpreter implements Context {
@@ -24,7 +23,7 @@ public class Interpreter implements Context {
     // private Lexer mLexer = new Lexer(mContext);
     // private Parser mParser = new Parser(mContext);
 
-    private boolean mNested = false;
+    // private boolean mNested = false;
 
     {
         mSymbolTable.put("make", new Operator.Make());
@@ -65,14 +64,25 @@ public class Interpreter implements Context {
         mPrompt.print(PROMPT);
     }
     */
-    static public boolean isNumber(String item) {
-        return item.startsWith("-") || !item.isEmpty() && Character.isDigit(item.charAt(0));
-    }
-
-    private String nextInstruction() throws IOException {
-        if (!mInputScanner.hasNext())
+    @Override
+    public Value nextInstruction() throws IOException, LexicalErrorException, InstantiationException, IllegalAccessException, UnknownOperatorException {
+        if (!mCodeScanner.hasNext())
             throw new IOException();
-        return mInputScanner.next();
+        String nextItem = mCodeScanner.next();
+        if (nextItem.startsWith("[")) {
+            return ListValue.Builder.fromCode(mCodeScanner, nextItem);
+        } else if (nextItem.startsWith("\"")) {
+            return new WordValue(nextItem.substring(1));
+        } else if (nextItem.startsWith(":")) {
+            return getSymbol(nextItem.substring(1));
+        } else if (NumberValue.isNumber(nextItem)) {
+            return NumberValue.parse(nextItem);
+        } else {
+            if (isExecutable(nextItem))
+                return (Value) getExecutable(nextItem);
+            else
+                throw new UnknownOperatorException();
+        }
     }
 
     /*
@@ -88,46 +98,6 @@ public class Interpreter implements Context {
     }
     */
 
-    public void startInterpret()
-            throws SyntaxErrorException, LexicalErrorException,
-            IOException, InstantiationException, IllegalAccessException {
-        Stack<Executable> opStack = new Stack<>();
-        String item = nextInstruction();
-        if (isExecutable(item))
-            // opStack.push(Operator.extract(item));
-            opStack.push(getExecutable(item));
-        while (!opStack.isEmpty()) {
-            Executable op = opStack.peek();
-            if (op.needsMoreArguments()) {
-                final String nextItem = nextInstruction();
-                if (nextItem.startsWith("[")) {
-                    op.addArgument(ListValue.Builder.fromCode(mCodeScanner, nextItem));
-                } else if (nextItem.startsWith("\"")) {
-                    op.addArgument(new WordValue(nextItem.substring(1)));
-                } else if (nextItem.startsWith(":")) {
-                    op.addArgument(getSymbol(nextItem.substring(1)));
-                } else if (NumberValue.isNumber(nextItem)) {
-                    op.addArgument(NumberValue.parse(nextItem));
-                } else {
-                    if (isExecutable(nextItem))
-                        opStack.push(getExecutable(nextItem));
-                    else
-                        throw new UnknownOperatorException();
-                }
-            } else {
-                // If the operator needs no more arguments, it is finished
-                // and will be popped from the stack, and add to the argument
-                // list of the last layer, or set it the root.
-                while (!opStack.isEmpty()) {
-                    Executable op2 = opStack.pop();
-                    Value result = op2.execute(this);
-                    if (!opStack.isEmpty())
-                        opStack.peek().addArgument(result);
-                }
-            }
-        }
-    }
-
     /*
     public void execute(String line) throws LexicalErrorException, SyntaxErrorException {
         Lexer lexer = mLexer;
@@ -140,15 +110,6 @@ public class Interpreter implements Context {
         // tokenQueue.forEach(mOut::println);
     }
     */
-
-    @Override
-    public boolean isNested() {
-        return mNested;
-    }
-
-    private void setNested(boolean nested) {
-        mNested = nested;
-    }
 
         /*
         @Override
@@ -172,6 +133,11 @@ public class Interpreter implements Context {
             }
         }
         */
+
+    @Override
+    public SymbolTable getSymbolTable() {
+        return mSymbolTable;
+    }
 
     @Override
     public void addSymbol(String symbol, Value value) {
@@ -199,19 +165,21 @@ public class Interpreter implements Context {
     }
 
     @Override
-    public boolean isExecutable(String item) {
-        return mSymbolTable.hasSymbol(item) && mSymbolTable.get(item) instanceof Executable;
+    public boolean isExecutable(String instruction) {
+        return isSymbol(instruction) && getSymbol(instruction) instanceof Executable;
     }
 
     @Override
-    public Executable getExecutable(String item) throws IllegalAccessException, InstantiationException {
-        return (Executable) mSymbolTable.get(item).getClass().newInstance();
+    public Executable getExecutable(String instruction) throws IllegalAccessException, InstantiationException {
+        return ((Executable) mSymbolTable.get(instruction)).clone();
     }
 
     @Override
     public Value read() throws LexicalErrorException, SyntaxErrorException, IOException {
         // mPrompt.print(READ_PROMPT);
-        String item = nextInstruction();
+        if (!mInputScanner.hasNext())
+            throw new IOException();
+        String item = mInputScanner.next();
         if (NumberValue.isNumber(item)) {
             return NumberValue.parse(item);
         } else
@@ -223,6 +191,11 @@ public class Interpreter implements Context {
         // String line = mCodeScanner.nextLine();
         return ListValue.Builder.fromInput(mInputScanner);
         // return mParser.parse(mLexer.lex("[" + line + "]").poll());
+    }
+
+    @Override
+    public boolean hasNextInstruction() {
+        return mCodeScanner.hasNext();
     }
 
     /*
