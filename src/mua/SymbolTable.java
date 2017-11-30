@@ -1,18 +1,18 @@
 package mua;
 
-import mua.lexer.Token;
+import mua.values.Value;
 
 import java.util.HashMap;
 
 public class SymbolTable {
     /** Symbol table of the program */
-    private HashMap<String, Object> mTable = new HashMap<>();
+    private HashMap<String, Value> mTable = new HashMap<>();
 
-    public Object get(String word) {
+    public Value get(String word) {
         return mTable.get(word);
     }
 
-    public void put(String word, Object value) {
+    public void put(String word, Value value) {
         mTable.put(word, value);
     }
 
@@ -22,5 +22,9 @@ public class SymbolTable {
 
     public boolean hasSymbol(String word) {
         return mTable.containsKey(word);
+    }
+
+    public void merge(SymbolTable other) {
+        mTable.putAll(other.mTable);
     }
 }

@@ -1,0 +1,12 @@
+make "fact [ // There is a comment.
+    [n] [
+        // print :n
+        if eq :n 1 [
+            output 1
+        ] [
+            output mul :n fact ( // test comment
+            :n - 1 )
+        ]
+    ]
+] // There might be some other comments.
+print fact 10

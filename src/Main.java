@@ -1,6 +1,6 @@
 import mua.Interpreter;
-import mua.lexer.LexicalErrorException;
-import mua.parser.SyntaxErrorException;
+import mua.exceptions.MuaExceptions;
+import mua.values.Function;
 
 import java.util.Scanner;
 
@@ -8,15 +8,14 @@ public class Main {
     public static void main(String[] argv) {
         Scanner scanner = new Scanner(System.in);
         Interpreter interpreter = new Interpreter(scanner, System.out);
-        interpreter.printPrompt();
-        while (scanner.hasNext()) {
-            String line = scanner.nextLine();
+        while (interpreter.hasNextInstruction()) {
             try {
-                interpreter.execute(line);
-            } catch (LexicalErrorException | SyntaxErrorException e) {
+                interpreter.run();
+            } catch (MuaExceptions e) {
                 e.printStackTrace();
+            } catch (Function.FunctionStop functionStop) {
+                // Ignore
             }
-            interpreter.printPrompt();
         }
     }
 }
