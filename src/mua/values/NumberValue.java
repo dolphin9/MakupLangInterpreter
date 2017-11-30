@@ -1,15 +1,9 @@
-package mua;
+package mua.values;
 
-public abstract class Value {
-    // abstract public Object getValue();
-    @Override
-    abstract public String toString();
-}
-
-class NumberValue extends Value {
+public class NumberValue extends Value {
     private Number mValue;
 
-    NumberValue(Number number) {
+    public NumberValue(Number number) {
         mValue = number;
     }
 
@@ -80,11 +74,11 @@ class NumberValue extends Value {
             return new BoolValue(lhs.doubleValue() < rhs.doubleValue());
     }
 
-    private int intValue() {
+    public int intValue() {
         return mValue.intValue();
     }
 
-    private double doubleValue() {
+    public double doubleValue() {
         return mValue.doubleValue();
     }
 
@@ -93,42 +87,3 @@ class NumberValue extends Value {
         return mValue.toString();
     }
 }
-
-class BoolValue extends Value {
-    private boolean mValue;
-
-    BoolValue(boolean bool) {
-        mValue = bool;
-    }
-
-    public static BoolValue and(BoolValue lhs, BoolValue rhs) {
-        return new BoolValue(lhs.mValue && rhs.mValue);
-    }
-
-    public static BoolValue or(BoolValue lhs, BoolValue rhs) {
-        return new BoolValue(lhs.mValue || rhs.mValue);
-    }
-
-    public static BoolValue not(BoolValue lhs) {
-        return new BoolValue(!lhs.mValue);
-    }
-
-    @Override
-    public String toString() {
-        return Boolean.toString(mValue);
-    }
-}
-
-class WordValue extends Value {
-    String mValue;
-
-    WordValue(String value) {
-        mValue = value;
-    }
-
-    @Override
-    public String toString() {
-        return mValue;
-    }
-}
-

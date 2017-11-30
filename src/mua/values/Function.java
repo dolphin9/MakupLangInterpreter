@@ -1,19 +1,28 @@
-package mua;
+package mua.values;
 
-import mua.parser.SyntaxErrorException;
-import mua.parser.UnknownOperatorException;
+import mua.SymbolTable;
+import mua.exceptions.MuaExceptions;
+import mua.interfaces.Context;
+import mua.interfaces.Executable;
+import mua.interfaces.FunctionContext;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class Function extends ListValue implements Executable {
-    final private List<WordValue> mFormalArgList =
+    static private final SymbolTable FUNCTION_OPS = new SymbolTable();
+
+    static {
+        FUNCTION_OPS.put("output", new Operator.Output());
+        FUNCTION_OPS.put("stop", new Operator.Stop());
+    }
+
+    private final List<WordValue> mFormalArgList =
             ((ListValue) mList.get(0)).mList.stream()
                     .map(value -> (WordValue) value)
                     .collect(Collectors.toList());
-    final private List<Value> mInstructionList =
+    private final List<Value> mInstructionList =
             ((ListValue) mList.get(1)).mList;
     private final String mName;
     private List<Value> mActualArgList = new ArrayList<>();
@@ -50,14 +59,23 @@ public class Function extends ListValue implements Executable {
     }
 
     @Override
-    public Value execute(Context globalContext) throws SyntaxErrorException, LexicalErrorException, IllegalAccessException, IOException, InstantiationException {
+    public Value execute(Context context) throws MuaExceptions {
+        Context globalContext = context;
+        if (context instanceof FunctionContext)
+            globalContext = ((FunctionContext) context).getGlobalContext();
         mLocalContext = new LocalContext(globalContext);
 
         for (int i = 0; i < mFormalArgList.size(); ++i)
             mLocalContext.addSymbol(mFormalArgList.get(i).toString(), mActualArgList.get(i));
+        mLocalContext.merge(FUNCTION_OPS);
+
 
         mLocalContext.merge(globalContext.getSymbolTable());
-        mLocalContext.run();
+        try {
+            mLocalContext.run();
+        } catch (FunctionStop functionStop) {
+            // Ignore
+        }
         return mLocalContext.getOutputValue();
     }
 
@@ -75,6 +93,9 @@ public class Function extends ListValue implements Executable {
     @Override
     public Function clone() {
         return new Function(this);
+    }
+
+    static public class FunctionStop extends Throwable {
     }
 
     private class LocalContext implements FunctionContext {
@@ -127,17 +148,17 @@ public class Function extends ListValue implements Executable {
         }
 
         @Override
-        public Executable getExecutable(String instruction) throws IllegalAccessException, InstantiationException {
+        public Executable getExecutable(String instruction) {
             return ((Executable) mLocalTable.get(instruction)).clone();
         }
 
         @Override
-        public Value read() throws LexicalErrorException, SyntaxErrorException, IOException {
+        public Value read() throws MuaExceptions {
             return mGlobalContext.read();
         }
 
         @Override
-        public Value readList() throws LexicalErrorException, SyntaxErrorException, IOException {
+        public Value readList() throws MuaExceptions {
             return mGlobalContext.readList();
         }
 
@@ -147,27 +168,13 @@ public class Function extends ListValue implements Executable {
         }
 
         @Override
-        public Value nextInstruction() throws IOException, UnknownOperatorException, InstantiationException, IllegalAccessException {
-            Value instruction = mInstructionList.get(mInstructionPointer++);
-            if (instruction instanceof NumberValue)
-                return instruction;
-            else if (instruction instanceof WordValue) {
-                String instructionStr = instruction.toString();
-                if (instructionStr.startsWith(":"))
-                    return getSymbol(instructionStr.substring(1));
-                else if (instructionStr.contains("\""))
-                    return new WordValue(instructionStr.substring(1));
-                else if (isExecutable(instructionStr))
-                    return (Value) getExecutable(instructionStr);
-                else
-                    throw new UnknownOperatorException();
-            } else
-                return instruction;
+        public Value nextRawInstruction() {
+            return mInstructionList.get(mInstructionPointer++);
         }
 
         @Override
-        public void stop() {
-            mInstructionPointer = mInstructionList.size();
+        public void stop() throws FunctionStop {
+            throw new FunctionStop();
         }
 
         @Override
@@ -178,6 +185,16 @@ public class Function extends ListValue implements Executable {
         @Override
         public void setOutputValue(Value outputValue) {
             mOutputValue = outputValue;
+        }
+
+        @Override
+        public Context getGlobalContext() {
+            return mGlobalContext;
+        }
+
+        @Override
+        public void run() throws MuaExceptions, FunctionStop {
+            FunctionContext.super.run();
         }
     }
 }

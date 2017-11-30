@@ -1,6 +1,9 @@
-package mua;
+package mua.values;
 
-import java.io.IOException;
+import mua.Expression;
+import mua.exceptions.MuaExceptions;
+import mua.interfaces.Fragment;
+
 import java.util.*;
 
 public class ListValue extends Value {
@@ -31,36 +34,44 @@ public class ListValue extends Value {
         return mList.size();
     }
 
-    public static abstract class Builder {
-        static ListValue fromInput(final Scanner scanner) throws IOException, LexicalErrorException {
+    public static abstract class Builder implements Fragment {
+        public static ListValue fromInput(final Scanner scanner) throws MuaExceptions {
             return new Builder() {
                 private String[] mItems;
                 private int mOffset = 0;
 
                 {
+                    scanner.nextLine();
                     if (!scanner.hasNextLine())
-                        throw new IOException();
-                    mItems = scanner.nextLine().split(" ");
+                        throw new MuaExceptions.InvalidInputException();
+                    mItems = ("[" + scanner.nextLine() + "]").split(" ");
                 }
 
                 @Override
-                String nextItem() {
+                public boolean hasNextInstruction() {
+                    return scanner.hasNext();
+                }
+
+                @Override
+                String nextInstruction() {
                     return mItems[mOffset++];
                 }
             }.buildList();
         }
 
-        static ListValue fromCode(final Scanner codeScanner, final String startItem)
-                throws IOException, LexicalErrorException {
+        public static ListValue fromCode(final String startItem, final Fragment fragment) throws MuaExceptions {
             return new Builder() {
                 private boolean mStarted = false;
 
                 @Override
-                String nextItem() throws IOException {
+                public boolean hasNextInstruction() {
+                    return fragment.hasNextInstruction();
+                }
+
+                @Override
+                String nextInstruction() throws MuaExceptions {
                     if (mStarted) {
-                        if (!codeScanner.hasNext())
-                            throw new IOException();
-                        return codeScanner.next();
+                        return fragment.nextRawInstruction().toString();
                     } else {
                         mStarted = true;
                         return startItem;
@@ -69,16 +80,23 @@ public class ListValue extends Value {
             }.buildList();
         }
 
-        abstract String nextItem() throws IOException;
+        abstract String nextInstruction() throws MuaExceptions;
 
-        public ListValue buildList() throws IOException, LexicalErrorException {
+        @Override
+        public WordValue nextRawInstruction() throws MuaExceptions {
+            return new WordValue(nextInstruction());
+        }
+
+        public ListValue buildList() throws MuaExceptions {
             // Use a stack to process the list values.
             Stack<Value> valueStack = new Stack<>();
             // Counter for the bracket, which is increased or decreased
             // when there is a "[" or "]".
             int bracketCount = 0;
             do {
-                String item = nextItem();
+                if (!hasNextInstruction())
+                    throw new MuaExceptions.BracketNotPairedException();
+                String item = nextInstruction();
 
                 int startLoc = 0;
                 int endLoc = item.length();
@@ -101,6 +119,8 @@ public class ListValue extends Value {
                 // The substring is either a number token or a string token, if not empty.
                 if (NumberValue.isNumber(subStr)) {
                     valueStack.push(NumberValue.parse(subStr));
+                } else if (Expression.isExpression(subStr)) {
+                    valueStack.push(Expression.build(subStr, this));
                 } else if (!subStr.isEmpty()) {
                     valueStack.push(new WordValue(subStr));
                 }
@@ -110,7 +130,7 @@ public class ListValue extends Value {
                 while (endLoc < item.length()) {
                     // If there is no "[", the bracket was not paired properly.
                     if (valueStack.empty())
-                        throw new BracketNotPairedException();
+                        throw new MuaExceptions.BracketNotPairedException();
                     ArrayDeque<Value> subList = new ArrayDeque<>();
                     // The tokens in the stack are popped and put into a sublist in reversed
                     // order one by one, until a "[" is on the top of the list.
@@ -130,22 +150,6 @@ public class ListValue extends Value {
                 // and will be put to the token list.
             } while (bracketCount != 0);
             return (ListValue) valueStack.pop();
-        /*
-        if (bracketCount == 0) {
-            tokenList.add(valueStack.pop());
-            i = j;
-            break;
-        }
-        // If it reaches the end of the command line, and there are still "["s not paired,
-        // this command is incomplete, and a next line should be received from the input.
-        while (j == nItems - 1 && !valueStack.empty()) {
-            String nextPart = mContext.lexerWait();
-            nextPart = removeComments(nextPart);
-            line += " " + nextPart;
-            items = line.split(" ");
-            nItems = items.length;
-        }
-        */
         }
 
         private class ListStartSymbol extends WordValue {

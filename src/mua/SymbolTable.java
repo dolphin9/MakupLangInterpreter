@@ -1,5 +1,7 @@
 package mua;
 
+import mua.values.Value;
+
 import java.util.HashMap;
 
 public class SymbolTable {

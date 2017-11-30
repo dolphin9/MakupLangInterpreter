@@ -1,24 +1,21 @@
 import mua.Interpreter;
-import mua.LexicalErrorException;
-import mua.parser.SyntaxErrorException;
+import mua.exceptions.MuaExceptions;
+import mua.values.Function;
 
-import java.io.IOException;
 import java.util.Scanner;
 
 public class Main {
     public static void main(String[] argv) {
         Scanner scanner = new Scanner(System.in);
         Interpreter interpreter = new Interpreter(scanner, System.out);
-        try {
-            interpreter.run();
-        } catch (LexicalErrorException | SyntaxErrorException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InstantiationException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
+        while (interpreter.hasNextInstruction()) {
+            try {
+                interpreter.run();
+            } catch (MuaExceptions e) {
+                e.printStackTrace();
+            } catch (Function.FunctionStop functionStop) {
+                // Ignore
+            }
         }
     }
 }

@@ -1,49 +1,22 @@
 package mua;
 
-import mua.parser.SyntaxErrorException;
-import mua.parser.UnknownOperatorException;
+import mua.exceptions.MuaExceptions;
+import mua.interfaces.Context;
+import mua.interfaces.Executable;
+import mua.interfaces.Fragment;
+import mua.values.*;
 
-import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Scanner;
-import java.util.logging.Logger;
 
 public class Interpreter implements Context {
-    public static final Logger LOGGER = Logger.getGlobal();
-    // private static final String PROMPT = "(mua) > ";
-    // private static final String CMD_WAIT_PROMPT = " ...  > ";
-    // private static final String READ_PROMPT = " ...  : ";
-    // private static final String READLINST_PROMPT = "..... : ";
     private SymbolTable mSymbolTable = new SymbolTable();
     private PrintStream mOut;
-    // private PrintStream mPrompt;
     private Scanner mCodeScanner;
     private Scanner mInputScanner;
-    // private Context mContext = new Context();
-    // private Lexer mLexer = new Lexer(mContext);
-    // private Parser mParser = new Parser(mContext);
-
-    // private boolean mNested = false;
 
     {
-        mSymbolTable.put("make", new Operator.Make());
-        mSymbolTable.put("thing", new Operator.Thing());
-        mSymbolTable.put("erase", new Operator.Erase());
-        mSymbolTable.put("isname", new Operator.IsName());
-        mSymbolTable.put("print", new Operator.Print());
-        mSymbolTable.put("read", new Operator.Read());
-        mSymbolTable.put("readlinst", new Operator.ReadList());
-        mSymbolTable.put("add", new Operator.Add());
-        mSymbolTable.put("sub", new Operator.Sub());
-        mSymbolTable.put("mul", new Operator.Mul());
-        mSymbolTable.put("div", new Operator.Div());
-        mSymbolTable.put("mod", new Operator.Mod());
-        mSymbolTable.put("eq", new Operator.Eq());
-        mSymbolTable.put("gt", new Operator.Gt());
-        mSymbolTable.put("lt", new Operator.Lt());
-        mSymbolTable.put("and", new Operator.And());
-        mSymbolTable.put("or", new Operator.Or());
-        mSymbolTable.put("not", new Operator.Not());
+        mSymbolTable.merge(Operator.DEFINED_OPS);
     }
 
     public Interpreter(Scanner scanner, PrintStream printStream) {
@@ -64,75 +37,51 @@ public class Interpreter implements Context {
         mPrompt.print(PROMPT);
     }
     */
+
     @Override
-    public Value nextInstruction() throws IOException, LexicalErrorException, InstantiationException, IllegalAccessException, UnknownOperatorException {
+    public Value nextRawInstruction() throws MuaExceptions.MissingArgumentException {
         if (!mCodeScanner.hasNext())
-            throw new IOException();
+            throw new MuaExceptions.MissingArgumentException();
         String nextItem = mCodeScanner.next();
+        if (nextItem.startsWith("//")) {
+            mCodeScanner.nextLine();
+            if (!mCodeScanner.hasNext())
+                throw new MuaExceptions.MissingArgumentException();
+            nextItem = mCodeScanner.next();
+        }
+        return new WordValue(nextItem);
+    }
+
+    @Override
+    public Value nextInstruction(Fragment fragment) throws MuaExceptions, Function.FunctionStop {
+        if (fragment == this)
+            return nextInstruction();
+        else
+            return Context.super.nextInstruction(fragment);
+    }
+
+    @Override
+    public Value nextInstruction() throws MuaExceptions, Function.FunctionStop {
+        String nextItem = nextRawInstruction().toString();
         if (nextItem.startsWith("[")) {
-            return ListValue.Builder.fromCode(mCodeScanner, nextItem);
+            return ListValue.Builder.fromCode(nextItem, this);
+        } else if (NumberValue.isNumber(nextItem)) {
+            return NumberValue.parse(nextItem);
+        } else if (Expression.isExpression(nextItem)) {
+            return Expression.evaluate(this, Expression.build(nextItem, this));
         } else if (nextItem.startsWith("\"")) {
             return new WordValue(nextItem.substring(1));
         } else if (nextItem.startsWith(":")) {
             return getSymbol(nextItem.substring(1));
-        } else if (NumberValue.isNumber(nextItem)) {
-            return NumberValue.parse(nextItem);
         } else {
-            if (isExecutable(nextItem))
+            if (isExecutable(nextItem)) {
                 return (Value) getExecutable(nextItem);
-            else
-                throw new UnknownOperatorException();
-        }
-    }
-
-    /*
-    public Value parseItem(String item) throws LexicalErrorException {
-        if (isNumber(item)) {
-            return NumberValue.parse(item);
-        } else if (item.startsWith(":")) {
-            return getSymbol(item.substring(1));
-        } else if (item.startsWith("\""))
-            return new WordValue(item.substring(1));
-        else
-            throw new LexicalErrorException();
-    }
-    */
-
-    /*
-    public void execute(String line) throws LexicalErrorException, SyntaxErrorException {
-        Lexer lexer = mLexer;
-        Parser parser = mParser;
-        Queue<Token> tokenQueue = lexer.lex(line);
-        ParseTree parseTree = parser.parse(tokenQueue);
-        Operator op = parseTree.getRoot();
-
-        mContext.run(op);
-        // tokenQueue.forEach(mOut::println);
-    }
-    */
-
-        /*
-        @Override
-        public void run(Operator op) throws LexicalErrorException, SyntaxErrorException {
-            setNested(false);
-            Value value = op.execute(this);
-            setNested(true);
-
-            while (value != null) {
-                if (value.isOperator())
-                    op = (Operator) value;
-                else if (value.isString())
-                    op = mParser.parse(mLexer.lex((String) value.getValue())).getRoot();
-                else if (value.isList()) {
-                    Queue<Token> tokens = new ArrayDeque<>(((ListValue) value).getTokens());
-                    op = mParser.parse(tokens).getRoot();
-                } else
-                    throw new UnknownOperatorException();
-                if (op == null)
-                    break;
+            } else {
+                throw new MuaExceptions.UnknownOperatorException(nextItem);
             }
         }
-        */
+    }
+
 
     @Override
     public SymbolTable getSymbolTable() {
@@ -170,15 +119,15 @@ public class Interpreter implements Context {
     }
 
     @Override
-    public Executable getExecutable(String instruction) throws IllegalAccessException, InstantiationException {
+    public Executable getExecutable(String instruction) {
         return ((Executable) mSymbolTable.get(instruction)).clone();
     }
 
     @Override
-    public Value read() throws LexicalErrorException, SyntaxErrorException, IOException {
+    public Value read() throws MuaExceptions {
         // mPrompt.print(READ_PROMPT);
         if (!mInputScanner.hasNext())
-            throw new IOException();
+            throw new MuaExceptions.MissingArgumentException();
         String item = mInputScanner.next();
         if (NumberValue.isNumber(item)) {
             return NumberValue.parse(item);
@@ -187,7 +136,7 @@ public class Interpreter implements Context {
     }
 
     @Override
-    public Value readList() throws LexicalErrorException, SyntaxErrorException, IOException {
+    public Value readList() throws MuaExceptions {
         // String line = mCodeScanner.nextLine();
         return ListValue.Builder.fromInput(mInputScanner);
         // return mParser.parse(mLexer.lex("[" + line + "]").poll());
@@ -197,29 +146,4 @@ public class Interpreter implements Context {
     public boolean hasNextInstruction() {
         return mCodeScanner.hasNext();
     }
-
-    /*
-    @Override
-    public Value parse(Object value) throws LexicalErrorException, SyntaxErrorException {
-        Token token = mLexer.lex(value);
-        if (token != null)
-            return mParser.parse(token);
-        else
-            return null;
-    }
-    */
-
-    /*
-    @Override
-    public String lexerWait() {
-        // mPrompt.print(CMD_WAIT_PROMPT);
-        return mCodeScanner.nextLine();
-    }
-
-    @Override
-    public Queue<Token> parserWait() throws LexicalErrorException {
-        // mPrompt.print(CMD_WAIT_PROMPT);
-        return mLexer.lex(mCodeScanner.nextLine());
-    }
-    */
 }
