@@ -33,6 +33,7 @@ public abstract class Operator extends Value implements Executable {
         DEFINED_OPS.put("not", new Operator.Not());
         DEFINED_OPS.put("repeat", new Operator.Repeat());
         DEFINED_OPS.put("if", new Operator.If());
+        DEFINED_OPS.put("sqrt", new Operator.Sqrt());
     }
     protected Class[] mArgTypes;
     protected List<Value> mArguments = new ArrayList<>();
@@ -360,6 +361,18 @@ public abstract class Operator extends Value implements Executable {
                 codeFragment = new CodeFragment(((ListValue) mArguments.get(2)).mList);
             context.run(codeFragment);
             return null;
+        }
+    }
+
+    static final class Sqrt extends Operator{
+        {
+            mArgTypes = new Class[]{NumberValue.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+
+            return new NumberValue(Math.sqrt(getNumArgAt(0).doubleValue()));
         }
     }
 

@@ -79,12 +79,12 @@ public interface Context extends Fragment {
                 }
                 if (opStack.isEmpty())
                     break;
-                Executable op2 = opStack.peek();
+                // Executable op2 = opStack.peek();
                 Value nextInstruction = nextInstruction(fragment);
                 if (nextInstruction instanceof Executable)
                     opStack.push((Executable) nextInstruction);
                 else
-                    op2.addArgument(nextInstruction);
+                    opStack.peek().addArgument(nextInstruction);
             }
         }
     }

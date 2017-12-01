@@ -11,3 +11,9 @@ make "fact [ // There is a comment.
     ]
 ] // There might be some other comments.
 print fact 10
+
+
+make "a 10
+make "b 20
+make "maxof [ [a b] [if gt :a :b [output :a] [output :b]]]
+print maxof :b :a
