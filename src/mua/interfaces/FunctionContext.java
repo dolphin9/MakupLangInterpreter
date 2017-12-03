@@ -10,8 +10,8 @@ public interface FunctionContext extends Context {
     Value getOutputValue();
 
     void setOutputValue(Value outputValue);
-
     Context getGlobalContext();
+
 
     @Override
     default void run() throws MuaExceptions, Function.FunctionStop {
