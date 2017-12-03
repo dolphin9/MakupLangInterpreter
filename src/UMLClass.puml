@@ -1,0 +1,140 @@
+@startuml
+
+
+    interface  Context{
+        --
+        + <b>Value  nextInstruction(Fragment)
+        + <b>void   run(Fragment)
+        ..
+        {method} Implementation of the <b>SymbolTable
+        ..
+        {method} <b>I/O operations
+    }
+    interface Executable {
+        + Value    execute(Context)
+        + boolean  needsMoreArguments()
+        + void     addArgument(Value argument)
+    }
+    interface Fragment{
+        + boolean  hasNextInstruction()
+        + Value    nextRawInstruction()
+    }
+    interface FunctionContext{
+        ---
+        + Value     getOutputValue()
+        + void      setOutputValue(Value)
+        + void      stop()
+        ..
+        + Context   getGlobalContext()
+    }
+
+    Context <|- FunctionContext
+    Fragment <|-- Context
+
+
+    abstract class Value{
+        + {abstract} String toString()
+    }
+
+    class ListValue{
+        # List<Value> mList
+        # Value get(int index)
+        # int size()
+    }
+    abstract class Operator{
+        + {static} DEFINED_OPS = {"make", "print", ...}
+        ..@override..
+        + {abstract} <b>Value   execute(Context)
+        + boolean  needsMoreArguments()
+        + void     addArgument(Value argument)
+    }
+    class Function {
+        - {static} FUNCTION_OPS = {"stop", "output"}
+        - List<WordValue>   mFormalArgList
+        - List<Value>       mActualArgList
+        - List<Value>       mInstructionList
+        - LocalContext      mLocalContext
+        ==
+        + Function(String name, List<Value> list)
+        + {static}boolean isFunction(ListValue)
+        ..@override..
+        + <b>Value   execute(Context)
+        + boolean  needsMoreArguments()
+        + void     addArgument(Value argument)
+    }
+    class CodeFragment{
+        - int mInstructionPointer
+        --
+        - CodeFragment(List<Value>)
+        + void resetPointer()
+        ..@override..
+        + boolean hasNextInstruction()
+        + Value   nextRawInstruction()
+    }
+
+    Value <|- ListValue
+    Operator--|>Value
+    Executable <-- Operator
+    ListValue <|-- Function
+    Executable <-- Function
+    ListValue <|- CodeFragment
+    CodeFragment -> Fragment
+
+    class Function.LocalContext{
+        - Context     mGlobalContext
+        - int         mInstructionPointer
+        - SymbolTable mLocalTable
+        - Value       mOutputValue
+        --
+        LocalContext(Context globalContext)
+        ..@override ..
+
+
+    }
+    Function *-- Function.LocalContext
+    FunctionContext <- Function.LocalContext
+
+    abstract class ListValue.Builder{
+        {method}...
+        {method}Some methods to generate ListValue
+
+        + <b>ListValue buildList()
+    }
+    ListValue *-- ListValue.Builder
+    Fragment  <- ListValue.Builder
+
+    SymbolTable ..o Operator
+    SymbolTable ..* Context
+
+    Function ...* FunctionContext
+
+    hide Function.LocalContext
+    hide ListValue.Builder
+    hide CodeFragment
+    hide Value
+    hide SymbolTable
+    hide ListValue
+
+
+class Interpreter {
+
+}
+
+hide Interpreter
+
+
+Context <- Interpreter
+
+class SymbolTable{
+    - HashMap<String,Value>
+    {method} Some operators about HashMap
+}
+class Expression{
+    + {static} boolean   isExpression(String)
+    + {static} WordValue build(String, Fragment)
+    + {static} <b>Value    evaluate(Context, WordValue)
+
+
+}
+@enduml
+

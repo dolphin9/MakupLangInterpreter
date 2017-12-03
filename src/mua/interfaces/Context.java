@@ -3,14 +3,12 @@ package mua.interfaces;
 import mua.Expression;
 import mua.SymbolTable;
 import mua.exceptions.MuaExceptions;
-import mua.values.Function;
-import mua.values.NumberValue;
-import mua.values.Value;
-import mua.values.WordValue;
+import mua.values.*;
 
 import java.util.Stack;
 
 public interface Context extends Fragment {
+
     void addSymbol(String symbol, Value value);
 
     Value getSymbol(String symbol);
@@ -44,6 +42,8 @@ public interface Context extends Fragment {
         Value instruction = fragment.nextRawInstruction();
         if (instruction instanceof NumberValue)
             return instruction;
+        else if (instruction instanceof ListValue)
+            return instruction;
         else if (instruction instanceof WordValue) {
             String instructionStr = instruction.toString();
             if (instructionStr.startsWith(":")) {
@@ -58,7 +58,7 @@ public interface Context extends Fragment {
                 throw new MuaExceptions.UnknownOperatorException(instructionStr);
             }
         } else {
-            return instruction;
+            throw new MuaExceptions.UnknownOperatorException(instruction.toString());
         }
     }
 

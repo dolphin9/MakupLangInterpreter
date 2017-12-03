@@ -54,7 +54,7 @@ public class Interpreter implements Context {
 
     @Override
     public Value nextInstruction(Fragment fragment) throws MuaExceptions, Function.FunctionStop {
-        if (fragment == this)
+        if (fragment == this) // Global fragment
             return nextInstruction();
         else
             return Context.super.nextInstruction(fragment);

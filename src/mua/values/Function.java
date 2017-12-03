@@ -99,7 +99,7 @@ public class Function extends ListValue implements Executable {
     }
 
     private class LocalContext implements FunctionContext {
-        private Context mGlobalContext;
+        private  Context mGlobalContext;
         private int mInstructionPointer = 0;
         private SymbolTable mLocalTable = new SymbolTable();
         private Value mOutputValue = null;

@@ -17,3 +17,6 @@ make "a 10
 make "b 20
 make "maxof [ [a b] [if gt :a :b [output :a] [output :b]]]
 print maxof :b :a
+
+print :a
+print :b

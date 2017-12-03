@@ -1,0 +1,12 @@
+
+@startuml
+
+class Expression{
+    + {static} boolean       isExpression(String)
+    + {static} WordValue     build(String, Fragment)
+    + {static} <b>Value evaluate(Context, WordValue)
+
+
+}
+
+@enduml
