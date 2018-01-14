@@ -19,6 +19,14 @@ public class BoolValue extends Value {
         return new BoolValue(!lhs.mValue);
     }
 
+    public static boolean isBool(String item) {
+        return item.equals("false") || item.equals("true");
+    }
+
+    public static BoolValue parse(String item) {
+        return new BoolValue(Boolean.valueOf(item));
+    }
+
     boolean boolValue() {
         return mValue;
     }

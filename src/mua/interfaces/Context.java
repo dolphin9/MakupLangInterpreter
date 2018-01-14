@@ -3,31 +3,90 @@ package mua.interfaces;
 import mua.Expression;
 import mua.SymbolTable;
 import mua.exceptions.MuaExceptions;
-import mua.values.Function;
-import mua.values.NumberValue;
-import mua.values.Value;
-import mua.values.WordValue;
+import mua.values.*;
 
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.List;
 import java.util.Stack;
 
 public interface Context extends Fragment {
-    void addSymbol(String symbol, Value value);
+    default void addSymbol(String symbol, Value value) {
+        getSymbolTable().put(symbol, value);
+    }
 
-    Value getSymbol(String symbol);
+    default Value getSymbol(String symbol) {
+        return getSymbolTable().get(symbol);
+    }
 
-    boolean isSymbol(String string);
+    default boolean isSymbol(String string) {
+        return getSymbolTable().hasSymbol(string);
+    }
 
-    void removeSymbol(String symbol);
+    default void removeSymbol(String symbol) {
+        getSymbolTable().remove(symbol);
+    }
 
     SymbolTable getSymbolTable();
 
-    boolean isExecutable(String item);
+    default boolean isExecutable(String item) {
+        return isSymbol(item) && getSymbol(item) instanceof Executable;
+    }
 
-    Executable getExecutable(String item) throws MuaExceptions;
+    default Executable getExecutable(String item) throws MuaExceptions {
+        return ((Executable) getSymbol(item)).clone();
+    }
 
     Value read() throws MuaExceptions;
 
     Value readList() throws MuaExceptions;
+
+    void clear();
+
+    default void listAll() {
+        listAll(getSymbolTable());
+    }
+
+    void listAll(SymbolTable table);
+
+    default void save(WordValue fileName) {
+        try {
+            FileOutputStream out = new FileOutputStream(fileName.toString());
+            getSymbolTable().listAll(out);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    default void load(WordValue fileName) throws MuaExceptions {
+        try {
+            List<String> lines = Files.readAllLines(Paths.get(fileName.toString()));
+            for (String line : lines) {
+                String[] items = line.split(" ", 2);
+                String word = items[0];
+                String rawValue = items[1];
+
+                if (rawValue.contains("[")) {
+                    ListValue list = ListValue.Builder.fromString(rawValue);
+                    if (Function.isFunction(list))
+                        addSymbol(word, new Function(word, list));
+                    else
+                        addSymbol(word, list);
+                } else if (NumberValue.isNumber(rawValue)) {
+                    addSymbol(word, NumberValue.parse(rawValue));
+                } else if (BoolValue.isBool(rawValue)) {
+                    addSymbol(word, BoolValue.parse(rawValue));
+                } else {
+                    addSymbol(word, new WordValue(rawValue));
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     void print(Value value);
 
@@ -48,10 +107,10 @@ public interface Context extends Fragment {
             String instructionStr = instruction.toString();
             if (instructionStr.startsWith(":")) {
                 return getSymbol(instructionStr.substring(1));
-            } else if (Expression.isExpression(instructionStr)) {
-                return Expression.evaluate(this, (WordValue) instruction);
             } else if (instructionStr.contains("\"")) {
                 return new WordValue(instructionStr.substring(1));
+            } else if (Expression.isExpression(instructionStr)) {
+                return Expression.evaluate(this, (WordValue) instruction);
             } else if (isExecutable(instructionStr)) {
                 return (Value) getExecutable(instructionStr);
             } else {

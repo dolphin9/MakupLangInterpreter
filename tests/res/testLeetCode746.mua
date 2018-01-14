@@ -1,0 +1,58 @@
+make "length [
+    [elem] [                                    // def length(elem):
+        if isempty :elem [                      //     if elem.empty():
+            output 0                            //         return 0
+        ] [                                     //     else:
+            output add length butlast :elem  1  //         return length(elem[:-1]) + 1
+        ]
+    ]
+]
+
+make "get_ith [
+    [elem index] [
+        if eq :index 0 [
+            output first :elem
+            stop
+        ] []
+        if eq :index -1 [
+            output last :elem
+            stop
+        ] []
+        if lt :index -1 [
+            output get_ith butlast :elem (:index + 1)
+            stop
+        ] []
+        if gt :index 0 [
+            output get_ith butfirst :elem (:index - 1)
+            stop
+        ] []
+    ]
+]
+
+make "min [
+    [a b] [
+        if lt :a :b [ output :a ] [ output :b ]
+    ]
+]
+
+make "minCostClimbingStairs [
+    [cost] [
+        make "cost join :cost 0
+        make "n length :cost
+        make "minCost []
+        make "minCost join :minCost first :cost
+        make "minCost join :minCost get_ith :cost 1
+        make "i 2
+        repeat (:n - 2) [
+            make "minCost join :minCost add min
+                    get_ith :minCost -2
+                    last :minCost
+                get_ith :cost :i
+            make "i (:i + 1)
+        ]
+        output last :minCost
+    ]
+]
+
+print minCostClimbingStairs [10 15 20]
+print minCostClimbingStairs [1 100 1 1 1 100 1 1 100 1]

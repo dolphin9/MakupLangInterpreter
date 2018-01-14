@@ -1,0 +1,12 @@
+min [[a b] [if lt :a :b [output :a] [output :b]]]
+length [[elem] [if isempty :elem [output 0] [output add length butlast :elem 1]]]
+pi 3.14159
+run [[code] [repeat 1 :code]]
+get_ith [[elem index] [if eq :index 0 [output first :elem stop] [] if eq :index -1 [output last :elem stop] [] if lt :index -1 [output get_ith butlast :elem ( :index + 1 ) stop] [] if gt :index 0 [output get_ith butfirst :elem ( :index - 1 ) stop] []]]
+1
+[]
+4
+[1 2 3 4 5 6]
+[[a b c] [d e f]]
+ab
+a3.14159

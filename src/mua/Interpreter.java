@@ -2,7 +2,6 @@ package mua;
 
 import mua.exceptions.MuaExceptions;
 import mua.interfaces.Context;
-import mua.interfaces.Executable;
 import mua.interfaces.Fragment;
 import mua.values.*;
 
@@ -16,27 +15,21 @@ public class Interpreter implements Context {
     private Scanner mInputScanner;
 
     {
-        mSymbolTable.merge(Operator.DEFINED_OPS);
+        mSymbolTable.put("pi", new NumberValue(3.14159));
+        mSymbolTable.put("run", new Operator.Run());
     }
 
     public Interpreter(Scanner scanner, PrintStream printStream) {
         mCodeScanner = scanner;
         mOut = printStream;
         mInputScanner = scanner;
-        // mPrompt = printStream;
     }
 
-    /*
-    public Interpreter(Scanner scanner, PrintStream printStream, PrintStream promptStream) {
-        mCodeScanner = scanner;
+    public Interpreter(Scanner codeScanner, PrintStream printStream, Scanner inputScanner) {
+        mCodeScanner = codeScanner;
         mOut = printStream;
-        mPrompt = promptStream;
+        mInputScanner = inputScanner;
     }
-
-    public void printPrompt() {
-        mPrompt.print(PROMPT);
-    }
-    */
 
     @Override
     public Value nextRawInstruction() throws MuaExceptions.MissingArgumentException {
@@ -65,12 +58,12 @@ public class Interpreter implements Context {
         String nextItem = nextRawInstruction().toString();
         if (nextItem.startsWith("[")) {
             return ListValue.Builder.fromCode(nextItem, this);
+        } else if (nextItem.startsWith("\"")) {
+            return new WordValue(nextItem.substring(1));
         } else if (NumberValue.isNumber(nextItem)) {
             return NumberValue.parse(nextItem);
         } else if (Expression.isExpression(nextItem)) {
             return Expression.evaluate(this, Expression.build(nextItem, this));
-        } else if (nextItem.startsWith("\"")) {
-            return new WordValue(nextItem.substring(1));
         } else if (nextItem.startsWith(":")) {
             return getSymbol(nextItem.substring(1));
         } else {
@@ -89,38 +82,8 @@ public class Interpreter implements Context {
     }
 
     @Override
-    public void addSymbol(String symbol, Value value) {
-        mSymbolTable.put(symbol, value);
-    }
-
-    @Override
-    public Value getSymbol(String symbol) {
-        return mSymbolTable.get(symbol);
-    }
-
-    @Override
-    public boolean isSymbol(String string) {
-        return mSymbolTable.hasSymbol(string);
-    }
-
-    @Override
-    public void removeSymbol(String symbol) {
-        mSymbolTable.remove(symbol);
-    }
-
-    @Override
     public void print(Value value) {
         mOut.println(value);
-    }
-
-    @Override
-    public boolean isExecutable(String instruction) {
-        return isSymbol(instruction) && getSymbol(instruction) instanceof Executable;
-    }
-
-    @Override
-    public Executable getExecutable(String instruction) {
-        return ((Executable) mSymbolTable.get(instruction)).clone();
     }
 
     @Override
@@ -140,6 +103,16 @@ public class Interpreter implements Context {
         // String line = mCodeScanner.nextLine();
         return ListValue.Builder.fromInput(mInputScanner);
         // return mParser.parse(mLexer.lex("[" + line + "]").poll());
+    }
+
+    @Override
+    public void clear() {
+        mSymbolTable.clear();
+    }
+
+    @Override
+    public void listAll(SymbolTable symbolTable) {
+        symbolTable.listAll(mOut);
     }
 
     @Override

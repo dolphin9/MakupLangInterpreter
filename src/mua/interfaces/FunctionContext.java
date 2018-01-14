@@ -13,6 +13,10 @@ public interface FunctionContext extends Context {
 
     Context getGlobalContext();
 
+    default void export() {
+        getGlobalContext().getSymbolTable().merge(getSymbolTable());
+    }
+
     @Override
     default void run() throws MuaExceptions, Function.FunctionStop {
         Context.super.run();

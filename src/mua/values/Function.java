@@ -7,15 +7,17 @@ import mua.interfaces.Executable;
 import mua.interfaces.FunctionContext;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class Function extends ListValue implements Executable {
-    static private final SymbolTable FUNCTION_OPS = new SymbolTable();
+    static public final HashMap<String, Value> FUNCTION_OPS = new HashMap<>();
 
     static {
         FUNCTION_OPS.put("output", new Operator.Output());
         FUNCTION_OPS.put("stop", new Operator.Stop());
+        FUNCTION_OPS.put("export", new Operator.Export());
     }
 
     private final List<WordValue> mFormalArgList =
@@ -28,8 +30,8 @@ public class Function extends ListValue implements Executable {
     private List<Value> mActualArgList = new ArrayList<>();
     private LocalContext mLocalContext;
 
-    public Function(String name, List<Value> list) {
-        super(list);
+    public Function(String name, ListValue list) {
+        super(list.mList);
         mName = name;
     }
 
@@ -53,24 +55,24 @@ public class Function extends ListValue implements Executable {
         return mName;
     }
 
-    @Override
-    public String toString() {
-        return mName;
-    }
+    // @Override
+    // public String toString() {
+    //     return mName;
+    // }
 
     @Override
     public Value execute(Context context) throws MuaExceptions {
         Context globalContext = context;
-        if (context instanceof FunctionContext)
-            globalContext = ((FunctionContext) context).getGlobalContext();
+        // if (context instanceof FunctionContext)
+        //     globalContext = ((FunctionContext) context).getGlobalContext();
         mLocalContext = new LocalContext(globalContext);
+
+        mLocalContext.merge(globalContext.getSymbolTable());
 
         for (int i = 0; i < mFormalArgList.size(); ++i)
             mLocalContext.addSymbol(mFormalArgList.get(i).toString(), mActualArgList.get(i));
-        mLocalContext.merge(FUNCTION_OPS);
+        // mLocalContext.merge(FUNCTION_OPS);
 
-
-        mLocalContext.merge(globalContext.getSymbolTable());
         try {
             mLocalContext.run();
         } catch (FunctionStop functionStop) {
@@ -108,26 +110,6 @@ public class Function extends ListValue implements Executable {
             mGlobalContext = globalContext;
         }
 
-        @Override
-        public void addSymbol(String symbol, Value value) {
-            mLocalTable.put(symbol, value);
-        }
-
-        @Override
-        public Value getSymbol(String symbol) {
-            return mLocalTable.get(symbol);
-        }
-
-        @Override
-        public boolean isSymbol(String string) {
-            return mLocalTable.hasSymbol(string);
-        }
-
-        @Override
-        public void removeSymbol(String symbol) {
-            mLocalTable.remove(symbol);
-        }
-
         public void merge(SymbolTable other) {
             mLocalTable.merge(other);
         }
@@ -143,16 +125,6 @@ public class Function extends ListValue implements Executable {
         }
 
         @Override
-        public boolean isExecutable(String instruction) {
-            return isSymbol(instruction) && getSymbol(instruction) instanceof Executable;
-        }
-
-        @Override
-        public Executable getExecutable(String instruction) {
-            return ((Executable) mLocalTable.get(instruction)).clone();
-        }
-
-        @Override
         public Value read() throws MuaExceptions {
             return mGlobalContext.read();
         }
@@ -160,6 +132,16 @@ public class Function extends ListValue implements Executable {
         @Override
         public Value readList() throws MuaExceptions {
             return mGlobalContext.readList();
+        }
+
+        @Override
+        public void clear() {
+            mLocalTable.clear();
+        }
+
+        @Override
+        public void listAll(SymbolTable table) {
+            mGlobalContext.listAll(table);
         }
 
         @Override

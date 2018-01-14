@@ -2,13 +2,11 @@ package mua.values;
 
 import mua.interfaces.Fragment;
 
-import java.util.List;
-
 public class CodeFragment extends ListValue implements Fragment {
     private int mInstructionPointer = 0;
 
-    public CodeFragment(List<Value> list) {
-        super(list);
+    public CodeFragment(ListValue list) {
+        super(list.mList);
     }
 
     @Override

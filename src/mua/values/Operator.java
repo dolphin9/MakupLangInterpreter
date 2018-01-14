@@ -1,16 +1,15 @@
 package mua.values;
 
-import mua.SymbolTable;
 import mua.exceptions.MuaExceptions;
 import mua.interfaces.Context;
 import mua.interfaces.Executable;
 import mua.interfaces.FunctionContext;
 
 import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
 
 public abstract class Operator extends Value implements Executable {
-    public static final SymbolTable DEFINED_OPS = new SymbolTable();
+    public static final HashMap<String, Operator> DEFINED_OPS = new HashMap<>();
 
     static {
         DEFINED_OPS.put("make", new Operator.Make());
@@ -32,10 +31,31 @@ public abstract class Operator extends Value implements Executable {
         DEFINED_OPS.put("or", new Operator.Or());
         DEFINED_OPS.put("not", new Operator.Not());
         DEFINED_OPS.put("repeat", new Operator.Repeat());
+        DEFINED_OPS.put("isnumber", new Operator.IsNumber());
+        DEFINED_OPS.put("isword", new Operator.IsWord());
+        DEFINED_OPS.put("islist", new Operator.IsList());
+        DEFINED_OPS.put("isbool", new Operator.IsBool());
+        DEFINED_OPS.put("isempty", new Operator.IsEmpty());
+        DEFINED_OPS.put("random", new Operator.Random());
+        DEFINED_OPS.put("sqrt", new Operator.Sqrt());
+        DEFINED_OPS.put("int", new Operator.Int());
+        DEFINED_OPS.put("word", new Operator.Word());
         DEFINED_OPS.put("if", new Operator.If());
+        DEFINED_OPS.put("sentence", new Operator.Sentence());
+        DEFINED_OPS.put("list", new Operator.List());
+        DEFINED_OPS.put("join", new Operator.Join());
+        DEFINED_OPS.put("first", new Operator.First());
+        DEFINED_OPS.put("last", new Operator.Last());
+        DEFINED_OPS.put("butfirst", new Operator.ButFirst());
+        DEFINED_OPS.put("butlast", new Operator.ButLast());
+        DEFINED_OPS.put("wait", new Operator.Wait());
+        DEFINED_OPS.put("save", new Operator.Save());
+        DEFINED_OPS.put("load", new Operator.Load());
+        DEFINED_OPS.put("erall", new Operator.EraseAll());
+        DEFINED_OPS.put("poall", new Operator.PostAll());
     }
     protected Class[] mArgTypes;
-    protected List<Value> mArguments = new ArrayList<>();
+    protected java.util.List<Value> mArguments = new ArrayList<>();
     // protected int mNumArgs;
 
     @Override
@@ -95,6 +115,14 @@ public abstract class Operator extends Value implements Executable {
                     mArguments.get(index).getClass(), BoolValue.class);
     }
 
+    ListValue getListValueAt(int index) throws MuaExceptions.InvalidArgumentTypeException {
+        if (mArguments.get(index) instanceof ListValue)
+            return (ListValue) mArguments.get(index);
+        else
+            throw new MuaExceptions.InvalidArgumentTypeException(
+                    mArguments.get(index).getClass(), BoolValue.class);
+    }
+
     @Override
     public boolean needsMoreArguments() {
         return mArguments.size() < mArgTypes.length;
@@ -127,7 +155,7 @@ public abstract class Operator extends Value implements Executable {
             Value value = getValueArgAt(1);
             if (value instanceof ListValue) {
                 if (Function.isFunction((ListValue) value)) {
-                    value = new Function(word, ((ListValue) value).mList);
+                    value = new Function(word, (ListValue) value);
                 }
             }
             context.addSymbol(word, value);
@@ -337,7 +365,7 @@ public abstract class Operator extends Value implements Executable {
 
         @Override
         public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
-            CodeFragment codeFragment = new CodeFragment(((ListValue) mArguments.get(1)).mList);
+            CodeFragment codeFragment = new CodeFragment(getListValueAt(1));
             for (int i = 0; i < getNumArgAt(0).intValue(); ++i) {
                 codeFragment.resetPointer();
                 context.run(codeFragment);
@@ -355,9 +383,9 @@ public abstract class Operator extends Value implements Executable {
         public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
             CodeFragment codeFragment;
             if (getBoolArgAt(0).boolValue())
-                codeFragment = new CodeFragment(((ListValue) mArguments.get(1)).mList);
+                codeFragment = new CodeFragment(getListValueAt(1));
             else
-                codeFragment = new CodeFragment(((ListValue) mArguments.get(2)).mList);
+                codeFragment = new CodeFragment(getListValueAt(2));
             context.run(codeFragment);
             return null;
         }
@@ -384,6 +412,316 @@ public abstract class Operator extends Value implements Executable {
         public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
             ((FunctionContext) context).stop();
             return null;
+        }
+    }
+
+    static final class Export extends Operator {
+        {
+            mArgTypes = new Class[0];
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            ((FunctionContext) context).export();
+            return null;
+        }
+
+    }
+
+    static final class IsNumber extends Operator {
+        {
+            mArgTypes = new Class[]{Value.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            return new BoolValue(getValueArgAt(0) instanceof NumberValue);
+        }
+    }
+
+    static final class IsWord extends Operator {
+        {
+            mArgTypes = new Class[]{Value.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            return new BoolValue(getValueArgAt(0) instanceof WordValue);
+        }
+    }
+
+    static final class IsList extends Operator {
+        {
+            mArgTypes = new Class[]{Value.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            return new BoolValue(getValueArgAt(0) instanceof ListValue);
+        }
+    }
+
+    static final class IsBool extends Operator {
+        {
+            mArgTypes = new Class[]{Value.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            return new BoolValue(getValueArgAt(0) instanceof BoolValue);
+        }
+    }
+
+    static final class IsEmpty extends Operator {
+        {
+            mArgTypes = new Class[]{Value.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            Value value = getValueArgAt(0);
+            if (value instanceof WordValue)
+                return new BoolValue(((WordValue) value).isEmpty());
+            else if (value instanceof ListValue)
+                return new BoolValue(((ListValue) value).isEmpty());
+            else
+                throw new MuaExceptions.InvalidArgumentTypeException(value.getClass(), Value.class);
+        }
+    }
+
+    static final class Sqrt extends Operator {
+        {
+            mArgTypes = new Class[]{NumberValue.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            return getNumArgAt(0).sqrt();
+        }
+    }
+
+    static final class Random extends Operator {
+        private static java.util.Random mRandom = new java.util.Random();
+
+        {
+            mArgTypes = new Class[]{NumberValue.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            return new NumberValue(mRandom.nextInt(getNumArgAt(0).intValue()));
+        }
+    }
+
+    static final class Int extends Operator {
+        {
+            mArgTypes = new Class[]{NumberValue.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            return new NumberValue(getNumArgAt(0).intValue());
+        }
+    }
+
+    static final class Word extends Operator {
+        {
+            mArgTypes = new Class[]{WordValue.class, Value.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            Value value = getValueArgAt(1);
+            if (!(value instanceof WordValue) && !(value instanceof NumberValue) && !(value instanceof BoolValue))
+                throw new MuaExceptions.InvalidArgumentTypeException(value.getClass(), Value.class);
+            return getWordArgAt(0).concat(value);
+        }
+    }
+
+    static final class Sentence extends Operator {
+        {
+            mArgTypes = new Class[]{Value.class, Value.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            return ListValue.concat(getValueArgAt(0), getValueArgAt(1));
+        }
+    }
+
+    static final class List extends Operator {
+        {
+            mArgTypes = new Class[]{Value.class, Value.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            return ListValue.join(getValueArgAt(0), getValueArgAt(1));
+        }
+    }
+
+    static final class Join extends Operator {
+        {
+            mArgTypes = new Class[]{ListValue.class, Value.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            return getListValueAt(0).append(getValueArgAt(1));
+        }
+    }
+
+    static final class First extends Operator {
+        {
+            mArgTypes = new Class[]{Value.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            Value value = getValueArgAt(0);
+            if (value instanceof ListValue)
+                return ((ListValue) value).first();
+            else if (value instanceof WordValue)
+                return ((WordValue) value).first();
+            else
+                throw new MuaExceptions.InvalidArgumentTypeException(
+                        value.getClass(), Value.class);
+        }
+    }
+
+    static final class Last extends Operator {
+        {
+            mArgTypes = new Class[]{Value.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            Value value = getValueArgAt(0);
+            if (value instanceof ListValue)
+                return ((ListValue) value).last();
+            else if (value instanceof WordValue)
+                return ((WordValue) value).last();
+            else
+                throw new MuaExceptions.InvalidArgumentTypeException(
+                        value.getClass(), Value.class);
+        }
+    }
+
+    static final class ButFirst extends Operator {
+        {
+            mArgTypes = new Class[]{Value.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            Value value = getValueArgAt(0);
+            if (value instanceof ListValue)
+                return ((ListValue) value).removeFirst();
+            else if (value instanceof WordValue)
+                return ((WordValue) value).removeFirst();
+            else
+                throw new MuaExceptions.InvalidArgumentTypeException(
+                        value.getClass(), Value.class);
+        }
+    }
+
+    static final class ButLast extends Operator {
+        {
+            mArgTypes = new Class[]{Value.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            Value value = getValueArgAt(0);
+            if (value instanceof ListValue)
+                return ((ListValue) value).removeLast();
+            else if (value instanceof WordValue)
+                return ((WordValue) value).removeLast();
+            else
+                throw new MuaExceptions.InvalidArgumentTypeException(
+                        value.getClass(), Value.class);
+        }
+    }
+
+    static final class Wait extends Operator {
+        {
+            mArgTypes = new Class[]{NumberValue.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            try {
+                wait(getNumArgAt(0).intValue());
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+    }
+
+    static final class Save extends Operator {
+        {
+            mArgTypes = new Class[]{WordValue.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            context.save(getWordArgAt(0));
+            return null;
+        }
+    }
+
+    static final class Load extends Operator {
+        {
+            mArgTypes = new Class[]{WordValue.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            context.load(getWordArgAt(0));
+            return null;
+        }
+    }
+
+    static final class EraseAll extends Operator {
+        {
+            mArgTypes = new Class[0];
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            context.clear();
+            return null;
+        }
+    }
+
+    static final class PostAll extends Operator {
+        {
+            mArgTypes = new Class[0];
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            context.listAll();
+            return null;
+        }
+    }
+
+    public static final class Run extends Operator {
+        {
+            mArgTypes = new Class[]{NumberValue.class, ListValue.class};
+        }
+
+        @Override
+        public Value execute(Context context) throws MuaExceptions, Function.FunctionStop {
+            CodeFragment codeFragment = new CodeFragment(getListValueAt(0));
+            context.run(codeFragment);
+            return null;
+        }
+
+        @Override
+        public String toString() {
+            return "[[code] [repeat 1 :code]]";
         }
     }
 }

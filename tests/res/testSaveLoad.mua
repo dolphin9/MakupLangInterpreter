@@ -1,0 +1,48 @@
+make "length [
+    [elem] [                                    // def length(elem):
+        if isempty :elem [                      //     if elem.empty():
+            output 0                            //         return 0
+        ] [                                     //     else:
+            output add length butlast :elem  1  //         return length(elem[:-1]) + 1
+        ]
+    ]
+]
+
+make "get_ith [
+    [elem index] [
+        if eq :index 0 [
+            output first :elem
+            stop
+        ] []
+        if eq :index -1 [
+            output last :elem
+            stop
+        ] []
+        if lt :index -1 [
+            output get_ith butlast :elem (:index + 1)
+            stop
+        ] []
+        if gt :index 0 [
+            output get_ith butfirst :elem (:index - 1)
+            stop
+        ] []
+    ]
+]
+
+make "min [
+    [a b] [
+        if lt :a :b [ output :a ] [ output :b ]
+    ]
+]
+
+save "/tmp/utility.data
+erall
+load "/tmp/utility.data
+poall
+print min 1 2
+print get_ith [1 2 3 []] -1
+print length [1 2 3 [4 5]]
+print sentence [1 2 3] [4 5 6]
+print list [a b c] [d e f]
+print word "a "b
+print word "a :pi

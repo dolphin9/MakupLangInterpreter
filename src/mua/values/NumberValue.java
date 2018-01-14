@@ -74,6 +74,10 @@ public class NumberValue extends Value {
             return new BoolValue(lhs.doubleValue() < rhs.doubleValue());
     }
 
+    public NumberValue sqrt() {
+        return new NumberValue(Math.sqrt(mValue.doubleValue()));
+    }
+
     public int intValue() {
         return mValue.intValue();
     }

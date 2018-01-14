@@ -13,6 +13,53 @@ public class ListValue extends Value {
         mList = list;
     }
 
+    static public ListValue concat(Value v1, Value v2) {
+        List<Value> list = new ArrayList<>();
+        if (v1 instanceof ListValue)
+            list.addAll(((ListValue) v1).mList);
+        else
+            list.add(v1);
+
+        if (v2 instanceof ListValue)
+            list.addAll(((ListValue) v2).mList);
+        else
+            list.add(v2);
+        return new ListValue(list);
+    }
+
+    static public ListValue join(Value v1, Value v2) {
+        List<Value> list = new ArrayList<>();
+        list.add(v1);
+        list.add(v2);
+        return new ListValue(list);
+    }
+
+    public ListValue append(Value value) {
+        List<Value> list = new ArrayList<>(mList);
+        list.add(value);
+        return new ListValue(list);
+    }
+
+    public Value first() {
+        return mList.get(0);
+    }
+
+    public Value last() {
+        return mList.get(mList.size() - 1);
+    }
+
+    public ListValue removeFirst() {
+        return new ListValue(mList.subList(1, mList.size()));
+    }
+
+    public ListValue removeLast() {
+        return new ListValue(mList.subList(0, mList.size() - 1));
+    }
+
+    public boolean isEmpty() {
+        return mList.isEmpty();
+    }
+
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
@@ -76,6 +123,23 @@ public class ListValue extends Value {
                         mStarted = true;
                         return startItem;
                     }
+                }
+            }.buildList();
+        }
+
+        public static ListValue fromString(final String string) throws MuaExceptions {
+            return new Builder() {
+                private String[] mItems = string.split(" ");
+                private int mIndex = 0;
+
+                @Override
+                public boolean hasNextInstruction() {
+                    return mIndex < mItems.length;
+                }
+
+                @Override
+                String nextInstruction() throws MuaExceptions {
+                    return mItems[mIndex++];
                 }
             }.buildList();
         }
